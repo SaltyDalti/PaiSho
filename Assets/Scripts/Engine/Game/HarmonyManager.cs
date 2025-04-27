@@ -1,5 +1,6 @@
 using UnityEngine;
 using PaiSho.Pieces;
+using PaiSho.Board;
 
 namespace PaiSho.Game
 {
@@ -15,6 +16,9 @@ namespace PaiSho.Game
                 Instance = this;
         }
 
+        /// <summary>
+        /// Determines if two pieces form a harmony.
+        /// </summary>
         public bool IsHarmony(Piece a, Piece b)
         {
             if (a.IsGhost || b.IsGhost) return false;
@@ -25,6 +29,9 @@ namespace PaiSho.Game
             return a.CanHarmonizeWith(b);
         }
 
+        /// <summary>
+        /// Determines if two pieces form a disharmony.
+        /// </summary>
         public bool IsDisharmony(Piece a, Piece b)
         {
             if (a.IsGhost || b.IsGhost) return false;

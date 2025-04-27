@@ -10,10 +10,10 @@ namespace PaiSho.Game
         public static GameManager Instance;
 
         private bool gameStarted = false;
-        private bool turnComplete = false;
-        private bool springPhase = true;
         private int currentPlayerIndex = 0;
         private Player[] players = new Player[] { Player.Host, Player.Opponent };
+        private bool springPhase = true;
+        private bool turnComplete = false;
 
         private void Awake()
         {
@@ -23,7 +23,7 @@ namespace PaiSho.Game
                 Instance = this;
         }
 
-        void Start()
+        private void Start()
         {
             Debug.Log("Spring Opening Phase begins!");
             gameStarted = true;
@@ -35,11 +35,26 @@ namespace PaiSho.Game
             return players[currentPlayerIndex];
         }
 
+        public void MarkTurnComplete()
+        {
+            turnComplete = true;
+        }
+
+        public bool IsSpringPhase()
+        {
+            return springPhase;
+        }
+
+        public PieceType GetOpeningFlower(Player player)
+        {
+            return player == Player.Host ? PieceType.Jasmine : PieceType.Rose;
+        }
+
         public void EndTurn()
         {
             if (!turnComplete)
             {
-                Debug.Log("You must place a tile before ending your turn.");
+                Debug.LogWarning("You must place a tile before ending your turn.");
                 return;
             }
 
@@ -52,14 +67,13 @@ namespace PaiSho.Game
             }
 
             turnComplete = false;
-            turnNumber++;
 
             List<Piece> allPieces = BoardManager.Instance.GetAllPieces();
 
-            // Evaluate lifecycle at turn start
+            // Evaluate tile lifecycle at turn start
             TileLifecycleManager.Instance.OnTurnStart(allPieces);
 
-            // Check for harmonic ring ending
+            // Check for harmonic ring victory condition
             Player current = GetCurrentPlayer();
             bool gameEnded = VictoryManager.Instance.CheckForHarmonyRingEnd(current, allPieces);
 
@@ -72,34 +86,10 @@ namespace PaiSho.Game
             }
         }
 
-        public void MarkTurnComplete()
-        {
-            turnComplete = true;
-        }
-
         public void EndGame(Player ringCreator)
         {
             Debug.Log($"Game has ended due to Harmony Ring formed by {ringCreator}.");
             GameEndManager.Instance.ResolveFinalScore();
-            // TODO: Evaluate final scores and declare winner
         }
-
-        public PieceType GetOpeningFlower(Player player)
-        {
-            return player == Player.Host ? PieceType.Jasmine : PieceType.Rose;
-        }
-
-        public bool IsSpringPhase()
-        {
-            return springPhase;
-        }
-
-        private int turnNumber = 1; // add at top
-
-        public int GetTurnNumber()
-        {
-            return turnNumber;
-        }
-
     }
 }

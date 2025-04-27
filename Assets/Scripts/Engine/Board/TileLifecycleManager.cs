@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using PaiSho.Pieces;
 using PaiSho.Game;
+using PaiSho.Board;
 
 namespace PaiSho.Board
 {
@@ -17,12 +18,9 @@ namespace PaiSho.Board
                 Instance = this;
         }
 
-        // Called from Knotweed drain effect
-        public void RegisterKnotweedDrain(Player fromPlayer)
-        {
-            EchoTileManager.Instance.AddRevivalPoints(fromPlayer, 1);
-        }
-
+        /// <summary>
+        /// Called at the start of each turn to update tile lifecycle states.
+        /// </summary>
         public void OnTurnStart(List<Piece> allPieces)
         {
             foreach (var piece in allPieces)
@@ -47,61 +45,56 @@ namespace PaiSho.Board
                 {
                     if (piece.WiltLevel < piece.PreviousWiltLevel)
                     {
-                        int points = 1;
-
-                        switch (SeasonManager.Instance.GetCurrentSeason())
+                        int points = SeasonManager.Instance.GetCurrentSeason() switch
                         {
-                            case Season.Spring:
-                                points = 2;
-                                break;
-                            case Season.Summer:
-                                points = 1;
-                                break;
-                            case Season.Autumn:
-                                points = piece.InHarmony ? 3 : 1;
-                                break;
-                            case Season.Winter:
-                                points = 2;
-                                break;
-                            default:
-                                points = 1;
-                                break;
-                        }
-
-                        EchoTileManager.Instance.AddRevivalPoints(piece.Owner, points);
-                    }
-
-                    UpdateWiltLevel(piece);
+                            Season.Spring => 2,
+                            Season.Summer => 1,
+                            Season.Autumn => piece.InHarmony ? 3 : 1,
+                            Season.Winter => 2,
+                            _ => 1
+                        };
+                    EchoTileManager.Instance.AddRevivalPoints(piece.Owner, points);
                 }
+
+                UpdateWiltLevel(piece);
+            }
                 else
                 {
-                    piece.FreezeWiltNextTurn = false;
-                }
-            }
-        }
-
-        private void UpdateWiltLevel(Piece piece)
-        {
-            int totalNeglect = Mathf.Max(piece.TurnsSinceMoved, piece.TurnsSinceHarmonized);
-
-            if (totalNeglect >= 4)
-            {
-                piece.WiltLevel = 2;
-                piece.PointValue = -1;
-                piece.SetVisualState("fully-wilted");
-            }
-            else if (totalNeglect == 3)
-            {
-                piece.WiltLevel = 1;
-                piece.PointValue = 0;
-                piece.SetVisualState("wilted");
-            }
-            else if (totalNeglect <= 2)
-            {
-                piece.WiltLevel = 0;
-                piece.PointValue = 1;
-                piece.SetVisualState("vibrant");
+                piece.FreezeWiltNextTurn = false;
             }
         }
     }
+
+    private void UpdateWiltLevel(Piece piece)
+    {
+        int totalNeglect = Mathf.Max(piece.TurnsSinceMoved, piece.TurnsSinceHarmonized);
+
+        if (totalNeglect >= 4)
+        {
+            piece.WiltLevel = 2;
+            piece.PointValue = -1;
+            piece.SetVisualState("fully-wilted");
+        }
+        else if (totalNeglect == 3)
+        {
+            piece.WiltLevel = 1;
+            piece.PointValue = 0;
+            piece.SetVisualState("wilted");
+        }
+        else if (totalNeglect <= 2)
+        {
+            piece.WiltLevel = 0;
+            piece.PointValue = 1;
+            piece.SetVisualState("vibrant");
+        }
+    }
+
+    /// <summary>
+    /// Adds a revival point when Knotweed drains occur.
+    /// </summary>
+    public void RegisterKnotweedDrain(Player fromPlayer)
+    {
+        EchoTileManager.Instance.AddRevivalPoints(fromPlayer, 1);
+    }
+}
 }

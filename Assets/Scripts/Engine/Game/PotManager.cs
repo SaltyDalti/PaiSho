@@ -1,53 +1,70 @@
-
-using System.Collections.Generic;
-using UnityEngine;
-using PaiSho.Pieces;
-
-namespace PaiSho.Game
-{
-    public class PotManager : MonoBehaviour
-    {
-        public static PotManager Instance;
-
-        public class CapturedPieceInfo
-        {
-            public PieceType Type;
-            public int Coordinate;
-            public Player Owner;
-
-            public CapturedPieceInfo(Piece piece)
-            {
-                Type = piece.Type;
-                Coordinate = piece.GetPosition();
-                Owner = piece.Owner;
-            }
-        }
-
-        private List<CapturedPieceInfo> capturedTiles = new();
-
-        private void Awake()
-        {
-            if (Instance != null && Instance != this)
-                Destroy(gameObject);
-            else
-                Instance = this;
-        }
-
-        public void RecordCapture(Piece piece)
-        {
-            var captureInfo = new CapturedPieceInfo(piece);
-            capturedTiles.Add(captureInfo);
-            Debug.Log($">>> Captured: {piece.Type} from {captureInfo.Owner} at position {captureInfo.Coordinate}");
-        }
-
-        public List<CapturedPieceInfo> GetAllCapturedPieces()
-        {
-            return new List<CapturedPieceInfo>(capturedTiles);
-        }
-
-        public int CountCapturedBy(Player player)
-        {
-            return capturedTiles.FindAll(p => p.Owner == player).Count;
-        }
-    }
-}
+using System.Collections.Generic;
+using UnityEngine;
+using PaiSho.Pieces;
+
+namespace PaiSho.Game
+{
+    public class PotManager : MonoBehaviour
+    {
+        public static PotManager Instance;
+
+        private Dictionary<Player, List<PieceType>> capturedPieces = new Dictionary<Player, List<PieceType>>();
+        private Dictionary<Player, int> revivalPoints = new Dictionary<Player, int>();
+
+        private void Awake()
+        {
+            if (Instance != null && Instance != this)
+                Destroy(gameObject);
+            else
+                Instance = this;
+
+            capturedPieces[Player.Host] = new List<PieceType>();
+            capturedPieces[Player.Opponent] = new List<PieceType>();
+            revivalPoints[Player.Host] = 0;
+            revivalPoints[Player.Opponent] = 0;
+        }
+
+        public void CapturePiece(Player capturer, Piece piece)
+        {
+            capturedPieces[capturer].Add(piece.Type);
+            Debug.Log($"{capturer} captured {piece.Type} at {piece.GetPosition()}.");
+        }
+
+        public List<PieceType> GetCapturedPieces(Player player)
+        {
+            return new List<PieceType>(capturedPieces[player]);
+        }
+
+        public int CountCapturedBy(Player player)
+        {
+            return capturedPieces[player].Count;
+        }
+
+        public void AddRevivalPoints(Player player, int points)
+        {
+            if (!revivalPoints.ContainsKey(player))
+                revivalPoints[player] = 0;
+
+            revivalPoints[player] += points;
+            Debug.Log($"{player} gained {points} revival points (now {revivalPoints[player]}).");
+
+            // Check for Echo Tile
+            if (revivalPoints[player] >= 10)
+            {
+                EchoTileManager.Instance.CreateEchoTile(player);
+                revivalPoints[player] -= 10;
+            }
+        }
+
+        public int GetRevivalPoints(Player player)
+        {
+            return revivalPoints.TryGetValue(player, out int points) ? points : 0;
+        }
+
+        public bool IsLotusBlooming(Player player)
+        {
+            Player opponent = player == Player.Host ? Player.Opponent : Player.Host;
+            return CountCapturedBy(player) < CountCapturedBy(opponent);
+        }
+    }
+}

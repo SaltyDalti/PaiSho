@@ -2,16 +2,21 @@ namespace PaiSho.Pieces
 {
     public enum PieceType
     {
+        // --- Flowers ---
         Jasmine,
-        Rose,
         Lily,
         Jade,
-        Chrysanthemum,
+        Rose,
         Rhododendron,
+        Chrysanthemum,
+
+        // --- Non-Flowers ---
         Boat,
         Rock,
         Knotweed,
         Wheel,
+
+        // --- Special Flowers ---
         Lotus,
         Orchid
     }

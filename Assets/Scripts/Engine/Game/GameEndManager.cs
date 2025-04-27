@@ -1,4 +1,7 @@
 using UnityEngine;
+using PaiSho.Game;
+using PaiSho.Pieces;
+using System.Collections.Generic;
 
 namespace PaiSho.Game
 {
@@ -16,18 +19,24 @@ namespace PaiSho.Game
 
         public void ResolveFinalScore()
         {
-            var scores = ScoringManager.Instance.GetAllScores();
-            int hostScore = scores[Player.Host];
-            int opponentScore = scores[Player.Opponent];
+            Debug.Log("Resolving final scores...");
 
-            Debug.Log($"Final Scores - Host: {hostScore}, Opponent: {opponentScore}");
+            List<Piece> allPieces = BoardManager.Instance.GetAllPieces();
+
+            int hostScore = ScoringManager.Instance.CalculateScore(Player.Host, allPieces);
+            int opponentScore = ScoringManager.Instance.CalculateScore(Player.Opponent, allPieces);
+
+            Debug.Log($"Host Final Score: {hostScore}");
+            Debug.Log($"Opponent Final Score: {opponentScore}");
 
             if (hostScore > opponentScore)
                 Debug.Log("Host wins!");
             else if (opponentScore > hostScore)
                 Debug.Log("Opponent wins!");
             else
-                Debug.Log("It's a poetic tie!");
+                Debug.Log("The game ends in a draw!");
+
+            // Optional: Trigger end screen or transition back to main menu
         }
     }
 }
