@@ -79,5 +79,34 @@ namespace PaiSho.Board
         {
             return piecesByCoordinate.ContainsKey(coordinate);
         }
+
+        public List<int> GetAdjacentCoordinates(int coordinate)
+        {
+            List<int> adjacentCoords = new List<int>();
+            int[] offsets = { -20, 20, -1, 1 }; // Ensure these offsets match your actual board grid layout
+
+            foreach (var offset in offsets)
+            {
+                int adjacent = coordinate + offset;
+                if (BoardUtils.IsValidPointCoordinate(adjacent))
+                    adjacentCoords.Add(adjacent);
+            }
+
+            return adjacentCoords;
+        }
+
+        private Dictionary<int, Tile> tilesByCoordinate = new Dictionary<int, Tile>();
+
+        public void RegisterTile(int coordinate, Tile tile)
+        {
+            tilesByCoordinate[coordinate] = tile;
+        }
+
+        public Tile GetTileAt(int coordinate)
+        {
+            tilesByCoordinate.TryGetValue(coordinate, out var tile);
+            return tile;
+        }
+
     }
 }

@@ -18,69 +18,69 @@ namespace PaiSho.Game
         }
 
         /// <summary>
-        /// Check if a harmonic ring has been formed around the center port.
+        /// Check if the player has formed a continuous harmonic ring around the central port.
         /// </summary>
         public bool CheckForHarmonyRingEnd(Player player, List<Piece> allPieces)
         {
-            List<int> centerRing = new List<int> { 171, 172, 173, 191, 210, 229, 248, 247, 246, 227, 208, 189 };
             HashSet<int> playerCoordinates = new HashSet<int>();
-
             foreach (var piece in allPieces)
             {
-                if (piece.Owner != player || piece.IsGhost) continue;
-                playerCoordinates.Add(piece.GetPosition());
+                if (piece.Owner == player && !piece.IsGhost)
+                    playerCoordinates.Add(piece.GetPosition());
             }
 
-            bool harmonicRing = true;
-            foreach (var coord in centerRing)
+            foreach (var startCoord in playerCoordinates)
             {
-                bool found = false;
-                foreach (var piece in allPieces)
+                HashSet<int> visited = new HashSet<int>();
+                if (IsHarmonicLoop(player, startCoord, startCoord, visited, -1, playerCoordinates))
                 {
-                    if (piece.Owner == player && HarmonyManager.Instance.IsHarmony(piece, BoardManager.Instance.GetPieceAt(coord)))
-                    {
-                        found = true;
-                        break;
-                    }
+                    Debug.Log($">>> {player} completed a Harmonic Ring! Ending the game.");
+                    GameManager.Instance.EndGame(player);
+                    return true;
                 }
-                if (!found)
-                {
-                    harmonicRing = false;
-                    break;
-                }
-            }
-
-            if (harmonicRing)
-            {
-                Debug.Log($">>> {player} completed a Harmonic Ring! Ending the game.");
-                GameManager.Instance.EndGame(player);
-                return true;
             }
 
             return false;
         }
 
-        /// <summary>
-        /// A fallback quick harmony check, used for bonus scoring.
-        /// </summary>
-        public int CountPlayerHarmonies(Player player, List<Piece> allPieces)
+        private bool IsHarmonicLoop(Player player, int currentCoord, int startCoord, HashSet<int> visited, int previousCoord, HashSet<int> playerCoords)
         {
-            int count = 0;
-
-            foreach (var a in allPieces)
+            visited.Add(currentCoord);
+            foreach (int neighbor in BoardManager.Instance.GetAdjacentCoordinates(currentCoord))
             {
-                if (a.Owner != player) continue;
+                if (neighbor == previousCoord) continue;
+                if (!playerCoords.Contains(neighbor)) continue;
 
-                foreach (var b in allPieces)
-                {
-                    if (a == b || b.Owner != player) continue;
+                Piece currentPiece = BoardManager.Instance.GetPieceAt(currentCoord);
+                Piece neighborPiece = BoardManager.Instance.GetPieceAt(neighbor);
 
-                    if (HarmonyManager.Instance.IsHarmony(a, b))
-                        count++;
-                }
+                if (!HarmonyManager.Instance.IsHarmony(currentPiece, neighborPiece)) continue;
+
+                if (neighbor == startCoord && visited.Count >= 4 && IsCenterPortEncircled(visited))
+                    return true;
+
+                if (!visited.Contains(neighbor))
+                    if (IsHarmonicLoop(player, neighbor, startCoord, visited, currentCoord, playerCoords))
+                        return true;
             }
 
-            return count / 2; // Each harmony counted twice
+            visited.Remove(currentCoord);
+            return false;
+        }
+
+        /// <summary>
+        /// Efficiently checks if the loop encircles the center port.
+        /// Assumes center port coordinate is fixed (e.g., 209 or similar).
+        /// </summary>
+        private bool IsCenterPortEncircled(HashSet<int> loopCoords)
+        {
+            int centerPort = BoardUtils.CenterPortCoordinate;
+            foreach (int coord in BoardManager.Instance.GetAdjacentCoordinates(centerPort))
+            {
+                if (!loopCoords.Contains(coord))
+                    return false;
+            }
+            return true;
         }
     }
 }

@@ -8,6 +8,8 @@ namespace PaiSho.Board
         public static readonly int BoardWidth = 19; // 19x19 standard
         public static readonly int BoardHeight = 19;
         public static readonly int BoardSize = BoardWidth * BoardHeight;
+        public static readonly int CenterPortCoordinate = 209; // Change '209' to your board's actual center coordinate
+
 
         public static readonly int[] AllDirections = { -19, 19, -1, 1, -20, -18, 20, 18 }; // Up, down, left, right, diagonals
 

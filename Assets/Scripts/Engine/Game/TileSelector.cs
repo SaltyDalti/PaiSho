@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using PaiSho.Pieces;
 using PaiSho.Board;
@@ -6,46 +7,95 @@ namespace PaiSho.Game
 {
     public class TileSelector : MonoBehaviour
     {
-        public static TileSelector Instance;
+        public LayerMask tileLayerMask;
+        private Piece selectedPiece;
+        private List<Tile> highlightedTiles = new List<Tile>();
 
-        private void Awake()
+        private void Update()
         {
-            if (Instance != null && Instance != this)
-                Destroy(gameObject);
-            else
-                Instance = this;
+            if (Input.GetMouseButtonDown(0))
+            {
+                Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+                if (Physics.Raycast(ray, out RaycastHit hit, 100f, tileLayerMask))
+                {
+                    Tile clickedTile = hit.collider.GetComponent<Tile>();
+                    if (clickedTile != null)
+                    {
+                        HandleTileClick(clickedTile);
+                    }
+                }
+            }
         }
 
-        /// <summary>
-        /// Attempt to place a tile on the board.
-        /// </summary>
-        public void TryPlaceTile(Player player, PieceType type, int coordinate)
+        private void HandleTileClick(Tile tile)
         {
-            if (!ReserveManager.Instance.HasTile(player, type))
+            if (selectedPiece == null)
             {
-                DebugLogger.LogWarning("Attempted to place a tile not in reserve.");
-                return;
+                if (tile.HasPiece() && tile.GetPiece().Owner == GameManager.Instance.GetCurrentPlayer())
+                {
+                    SelectPiece(tile.GetPiece());
+                }
             }
-
-            if (!PlacementValidator.CanPlace(player, type, coordinate))
+            else
             {
-                DebugLogger.LogWarning("Invalid placement attempted.");
-                return;
+                if (highlightedTiles.Contains(tile))
+                {
+                    MoveSelectedPiece(tile);
+                }
+                else
+                {
+                    DeselectPiece();
+                }
             }
+        }
 
-            if (type == PieceType.Orchid && !PlacementValidator.IsOnOpponentSide(coordinate, player))
+        private void SelectPiece(Piece piece)
+        {
+            selectedPiece = piece;
+            HighlightLegalMoves(piece);
+        }
+
+        private void DeselectPiece()
+        {
+            ClearHighlights();
+            selectedPiece = null;
+        }
+
+        private void HighlightLegalMoves(Piece piece)
+        {
+            ClearHighlights();
+            var legalMoves = MovementManager.Instance.GetLegalMoves(piece);
+
+            foreach (var coord in legalMoves)
             {
-                DebugLogger.LogWarning("Orchid must be placed on opponent's side.");
-                return;
+                Tile tile = BoardManager.Instance.GetTileAt(coord);
+                if (tile != null)
+                {
+                    tile.EnableHighlight();
+                    highlightedTiles.Add(tile);
+                }
             }
+        }
 
-            BoardManager.Instance.PlacePiece(player, type, coordinate);
-            ReserveManager.Instance.RemoveFromReserve(player, type);
+        private void ClearHighlights()
+        {
+            foreach (var tile in highlightedTiles)
+            {
+                tile.DisableHighlight();
+            }
+            highlightedTiles.Clear();
+        }
 
-            DebugLogger.Log($"Placed {type} by {player} at {coordinate}");
+        private void MoveSelectedPiece(Tile destinationTile)
+        {
+            BoardManager.Instance.MovePiece(selectedPiece, destinationTile.GetCoordinate());
 
-            GameManager.Instance.MarkTurnComplete();
-            GameManager.Instance.EndTurn();
+            DeselectPiece();
+
+            if (!VictoryManager.Instance.CheckForHarmonyRingEnd(GameManager.Instance.GetCurrentPlayer(), BoardManager.Instance.GetAllPieces()))
+            {
+                GameManager.Instance.EndTurn();
+            }
         }
     }
 }
