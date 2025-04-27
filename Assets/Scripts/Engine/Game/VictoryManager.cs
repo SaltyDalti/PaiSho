@@ -23,7 +23,7 @@ namespace PaiSho.Game
         public bool CheckForHarmonyRingEnd(Player player, List<Piece> allPieces)
         {
             List<int> centerRing = new List<int> { 171, 172, 173, 191, 210, 229, 248, 247, 246, 227, 208, 189 };
-            HashSet<int> playerCoordinates = new ();
+            HashSet<int> playerCoordinates = new HashSet<int>();
 
             foreach (var piece in allPieces)
             {

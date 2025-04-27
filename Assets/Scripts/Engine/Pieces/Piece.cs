@@ -142,6 +142,30 @@ namespace PaiSho.Pieces
             return PointValue;
         }
 
+        private int boardCoordinate;
+
+        public void SetBoardCoordinate(int coordinate)
+        {
+            boardCoordinate = coordinate;
+        }
+
+        public int GetPosition()
+        {
+            return boardCoordinate;
+        }
+
+        public void SetVisualState(string state)
+        {
+            // Placeholder for now: 
+            // Later this could trigger animations, shader swaps, particle effects, etc
+            Debug.Log($"Visual state of {Type} changed to {state}");
+        }
+
+        public bool IsGhost
+        {
+            get; set;
+        }
+
         // --- Blooming Logic ---
         public bool IsBlooming()
         {
