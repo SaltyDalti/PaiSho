@@ -8,7 +8,7 @@ namespace PaiSho.Board
     {
         public static BoardManager Instance;
 
-        private Dictionary<int, Piece> boardPositions = new ();
+        private Dictionary<int, Piece> piecesByCoordinate = new ();
 
         private void Awake()
         {
@@ -20,68 +20,48 @@ namespace PaiSho.Board
 
         public void PlacePiece(Piece piece, int coordinate)
         {
-            if (boardPositions.ContainsKey(coordinate))
+            if (piecesByCoordinate.ContainsKey(coordinate))
+                Debug.LogWarning($"Warning: Overwriting piece at {coordinate}");
+
+            piecesByCoordinate[coordinate] = piece;
+            piece.SetBoardCoordinate(coordinate);
+        }
+
+        public void MovePiece(Piece piece, int toCoordinate)
+        {
+            if (!piecesByCoordinate.ContainsValue(piece))
             {
-                Debug.LogWarning($"Attempted to place {piece.Type} at occupied coordinate {coordinate}!");
+                Debug.LogError("Piece not found on board");
                 return;
             }
 
-            boardPositions[coordinate] = piece;
-            piece.SetPosition(coordinate);
-            Debug.Log($"Placed {piece.Type} at {coordinate}");
-        }
-
-        public void MovePiece(Piece piece, int newCoordinate)
-        {
-            int oldCoordinate = piece.GetPosition();
-
-            if (boardPositions.ContainsKey(newCoordinate))
-            {
-                Debug.LogWarning($"Attempted to move to occupied coordinate {newCoordinate}!");
-                return;
-            }
-
-            boardPositions.Remove(oldCoordinate);
-            boardPositions[newCoordinate] = piece;
-            piece.SetPosition(newCoordinate);
-            Debug.Log($"Moved {piece.Type} from {oldCoordinate} to {newCoordinate}");
-        }
-
-        public void RemovePiece(Piece piece)
-        {
-            int coordinate = piece.GetPosition();
-
-            if (boardPositions.ContainsKey(coordinate))
-            {
-                boardPositions.Remove(coordinate);
-                Debug.Log($"Removed {piece.Type} from {coordinate}");
-            }
-            else
-            {
-                Debug.LogWarning($"Tried to remove {piece.Type}, but it was not found on board.");
-            }
+            int currentCoordinate = piece.GetPosition();
+            piecesByCoordinate.Remove(currentCoordinate);
+            piecesByCoordinate[toCoordinate] = piece;
+            piece.SetBoardCoordinate(toCoordinate);
         }
 
         public Piece GetPieceAt(int coordinate)
         {
-            boardPositions.TryGetValue(coordinate, out Piece piece);
+            piecesByCoordinate.TryGetValue(coordinate, out var piece);
             return piece;
+        }
+
+        public void RemovePiece(Piece piece)
+        {
+            int coord = piece.GetPosition();
+            piecesByCoordinate.Remove(coord);
+            Destroy(piece.gameObject);
         }
 
         public List<Piece> GetAllPieces()
         {
-            return new List<Piece>(boardPositions.Values);
+            return new List<Piece>(piecesByCoordinate.Values);
         }
 
         public bool IsOccupied(int coordinate)
         {
-            return boardPositions.ContainsKey(coordinate);
-        }
-
-        public void ClearBoard()
-        {
-            boardPositions.Clear();
-            Debug.Log("Board cleared.");
+            return piecesByCoordinate.ContainsKey(coordinate);
         }
     }
 }
