@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using PaiSho.Pieces;
+using PaiSho.Game;
 
 namespace PaiSho.Board
 {
@@ -8,7 +9,7 @@ namespace PaiSho.Board
     {
         public static BoardManager Instance;
 
-        private Dictionary<int, Piece> piecesByCoordinate = new ();
+        private Dictionary<int, Piece> piecesByCoordinate = new Dictionary<int, Piece>();
 
         private void Awake()
         {
@@ -25,6 +26,16 @@ namespace PaiSho.Board
 
             piecesByCoordinate[coordinate] = piece;
             piece.SetBoardCoordinate(coordinate);
+        }
+
+        public Piece PlacePiece(Player owner, PieceType type, int coordinate)
+        {
+            // Assuming you have a prefab system later; placeholder for now
+            GameObject pieceObj = new GameObject(type.ToString());
+            Piece piece = pieceObj.AddComponent<Piece>();
+            piece.Initialize(owner, type);
+            PlacePiece(piece, coordinate);
+            return piece;
         }
 
         public void MovePiece(Piece piece, int toCoordinate)

@@ -1,5 +1,6 @@
 using UnityEngine;
 using PaiSho.Game;
+using PaiSho.Board;
 using PaiSho.Pieces;
 using System.Collections.Generic;
 

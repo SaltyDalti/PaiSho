@@ -40,6 +40,11 @@ namespace PaiSho.Game
             return capturedPieces[player].Count;
         }
 
+        public void RecordCapture(Player player, Piece piece)
+        {
+            capturedPieces[player].Add(piece.Type);
+        }
+
         public void AddRevivalPoints(Player player, int points)
         {
             if (!revivalPoints.ContainsKey(player))

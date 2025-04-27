@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using PaiSho.Pieces;
+using PaiSho.Board;
 
 namespace PaiSho.Game
 {
@@ -8,7 +9,7 @@ namespace PaiSho.Game
     {
         public static EchoTileManager Instance;
 
-        private Dictionary<Player, int> revivalPoints = new ();
+        private Dictionary<Player, int> revivalPoints = new Dictionary<Player, int>();
 
         private void Awake()
         {

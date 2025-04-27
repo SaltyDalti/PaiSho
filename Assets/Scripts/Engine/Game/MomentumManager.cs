@@ -124,9 +124,9 @@ namespace PaiSho.Game
             momentumTokens[player] += count;
         }
 
-        public int GetTotalEarned()
+        public int GetTotalEarned(Player player)
         {
-            return momentumTokens[Player.Host] + momentumTokens[Player.Opponent];
+            return GetMomentum(player); // Total momentum of that player
         }
 
     }

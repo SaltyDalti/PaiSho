@@ -8,7 +8,7 @@ namespace PaiSho.Game
     {
         public static ReserveManager Instance;
 
-        private Dictionary<Player, List<PieceType>> reservedPieces = new ();
+        private Dictionary<Player, List<PieceType>> reservedPieces = new Dictionary<Player, List<PieceType>>();
 
         private void Awake()
         {
@@ -19,6 +19,16 @@ namespace PaiSho.Game
 
             reservedPieces[Player.Host] = new List<PieceType>();
             reservedPieces[Player.Opponent] = new List<PieceType>();
+        }
+
+        public bool HasTile(Player player, PieceType type)
+        {
+            return reservedPieces[player].Contains(type);
+        }
+
+        public void RemoveFromReserve(Player player, PieceType type)
+        {
+            reservedPieces[player].Remove(type);
         }
 
         /// <summary>
