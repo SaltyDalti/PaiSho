@@ -9,7 +9,7 @@ namespace PaiSho.Pieces
         public Player Owner { get; private set; }
         public PieceType Type { get; private set; }
 
-        private int currentCoordinate;
+        private int boardCoordinate;
         public int TurnsSinceMoved { get; set; }
         public int TurnsSinceHarmonized { get; set; }
         public int WiltLevel { get; set; }
@@ -31,12 +31,17 @@ namespace PaiSho.Pieces
         // --- Board Position ---
         public void SetPosition(int coordinate)
         {
-            currentCoordinate = coordinate;
+            boardCoordinate = coordinate;
+        }
+
+        public void SetBoardCoordinate(int coordinate)
+        {
+            boardCoordinate = coordinate;
         }
 
         public int GetPosition()
         {
-            return currentCoordinate;
+            return boardCoordinate;
         }
 
         // --- Behavior Flags ---
@@ -142,28 +147,11 @@ namespace PaiSho.Pieces
             return PointValue;
         }
 
-        private int boardCoordinate;
-
-        public void SetBoardCoordinate(int coordinate)
-        {
-            boardCoordinate = coordinate;
-        }
-
-        public int GetPosition()
-        {
-            return boardCoordinate;
-        }
 
         public void SetVisualState(string state)
         {
-            // Placeholder for now: 
-            // Later this could trigger animations, shader swaps, particle effects, etc
-            Debug.Log($"Visual state of {Type} changed to {state}");
-        }
-
-        public bool IsGhost
-        {
-            get; set;
+            Debug.Log($"Piece {Type} changed to visual state: {state}");
+            // TODO: Hook this into Unity animations / shaders / materials
         }
 
         // --- Blooming Logic ---
@@ -174,13 +162,6 @@ namespace PaiSho.Pieces
 
             Player opponent = (Owner == Player.Host) ? Player.Opponent : Player.Host;
             return PotManager.Instance.CountCapturedBy(Owner) < PotManager.Instance.CountCapturedBy(opponent);
-        }
-
-        // --- Visual Feedback (Stub for Expansion) ---
-        public void SetVisualState(string state)
-        {
-            Debug.Log($"Piece {Type} changed to visual state: {state}");
-            // TODO: Hook this into Unity animations / shaders / materials
         }
     }
 }
