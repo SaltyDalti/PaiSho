@@ -95,18 +95,24 @@ namespace PaiSho.Board
             return adjacentCoords;
         }
 
-        private Dictionary<int, Tile> tilesByCoordinate = new Dictionary<int, Tile>();
+        private Dictionary<Vector2Int, Tile> tilesByCoordinate = new Dictionary<Vector2Int, Tile>();
 
-        public void RegisterTile(int coordinate, Tile tile)
+
+
+        public void RegisterTile(int x, int z, Tile tile)
         {
-            tilesByCoordinate[coordinate] = tile;
+            Vector2Int key = new Vector2Int(x, z);
+            tilesByCoordinate[key] = tile;
         }
 
-        public Tile GetTileAt(int coordinate)
+
+        public Tile GetTileAt(int x, int z)
         {
-            tilesByCoordinate.TryGetValue(coordinate, out var tile);
+            Vector2Int key = new Vector2Int(x, z);
+            tilesByCoordinate.TryGetValue(key, out Tile tile);
             return tile;
         }
+
 
     }
 }

@@ -96,6 +96,7 @@ namespace PaiSho.Game
         {
             Debug.Log($"Game has ended due to Harmony Ring formed by {ringCreator}.");
             GameEndManager.Instance.ResolveFinalScore();
+            GameEndUI.Instance.ShowVictory(ringCreator);
         }
     }
 }

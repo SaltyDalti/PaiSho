@@ -18,41 +18,30 @@ namespace PaiSho.Game
         }
 
         /// <summary>
-        /// Try capturing enemy tiles after placing a new piece.
+        /// Check adjacent pieces around the placed/moved piece and capture enemies in disharmony.
         /// </summary>
-        public void TryCapture(Piece newPiece, int coord)
+        public void CheckForCaptures(Piece placedPiece)
         {
-            List<Piece> toCapture = new List<Piece>();
+            List<int> neighbors = BoardManager.Instance.GetAdjacentCoordinates(placedPiece.GetPosition());
 
-            // Direct capture (placed onto enemy)
-            Piece occupying = BoardManager.Instance.GetPieceAt(coord);
-            if (occupying != null && occupying.Owner != newPiece.Owner)
+            foreach (int coord in neighbors)
             {
-                if (HarmonyManager.Instance.IsDisharmony(newPiece, occupying))
-                    toCapture.Add(occupying);
-            }
+                Piece neighbor = BoardManager.Instance.GetPieceAt(coord);
 
-            // Radiant capture (adjacent disharmony)
-            int[] directions = { -1, 1, -19, 19, -20, -18, 18, 20 };
-            foreach (int offset in directions)
-            {
-                int neighborCoord = coord + offset;
-                Piece neighbor = BoardManager.Instance.GetPieceAt(neighborCoord);
+                if (neighbor == null)
+                    continue;
 
-                if (neighbor != null && neighbor.Owner != newPiece.Owner)
+                if (neighbor.Owner != placedPiece.Owner)
                 {
-                    if (HarmonyManager.Instance.IsDisharmony(newPiece, neighbor))
-                        toCapture.Add(neighbor);
+                    if (HarmonyManager.Instance.IsDisharmony(placedPiece, neighbor))
+                    {
+                        Debug.Log($"Captured enemy piece at {coord}!");
+
+                        BoardManager.Instance.RemovePiece(neighbor);
+
+                        // (Optional) Later: PotManager.Instance.AddCapturedPiece(neighbor);
+                    }
                 }
-            }
-
-            // Execute captures
-            foreach (var piece in toCapture)
-            {
-                DebugLogger.Log($">>> {piece.Type} at {piece.GetPosition()} captured by {newPiece.Type} at {coord}");
-
-                PotManager.Instance.CapturePiece(newPiece.Owner, piece); // Proper capture recording
-                BoardManager.Instance.RemovePiece(piece);
             }
         }
     }

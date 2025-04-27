@@ -5,6 +5,19 @@ public class Tile : MonoBehaviour
 {
     [SerializeField] private GameObject highlightVisual;
     private Piece occupyingPiece;
+    private int x;
+    private int z;
+
+    public void SetGridPosition(int x, int z)
+    {
+        this.x = x;
+        this.z = z;
+    }
+
+    public Vector2Int GetGridPosition()
+    {
+        return new Vector2Int(x, z);
+    }
 
     public void SetPiece(Piece piece)
     {

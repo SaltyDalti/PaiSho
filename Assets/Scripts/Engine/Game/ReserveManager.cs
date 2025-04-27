@@ -8,7 +8,7 @@ namespace PaiSho.Game
     {
         public static ReserveManager Instance;
 
-        private Dictionary<Player, List<PieceType>> reservedPieces = new Dictionary<Player, List<PieceType>>();
+        private Dictionary<Player, Dictionary<PieceType, int>> reserves = new Dictionary<Player, Dictionary<PieceType, int>>();
 
         private void Awake()
         {
@@ -17,40 +17,54 @@ namespace PaiSho.Game
             else
                 Instance = this;
 
-            reservedPieces[Player.Host] = new List<PieceType>();
-            reservedPieces[Player.Opponent] = new List<PieceType>();
+            InitializeReserves();
         }
 
-        /// <summary>
-        /// Check if a player has a specific piece in reserve.
-        /// </summary>
-        public bool HasTile(Player player, PieceType type)
+        private void InitializeReserves()
         {
-            return reservedPieces[player].Contains(type);
+            reserves[Player.Host] = new Dictionary<PieceType, int>();
+            reserves[Player.Opponent] = new Dictionary<PieceType, int>();
+
+            // Flowers - 6 each
+            PieceType[] flowers = { PieceType.Jasmine, PieceType.Lily, PieceType.Jade, PieceType.Rose, PieceType.Rhododendron, PieceType.Chrysanthemum };
+            foreach (var flower in flowers)
+            {
+                reserves[Player.Host][flower] = 6;
+                reserves[Player.Opponent][flower] = 6;
+            }
+
+            // Non-Flowers and Special Flowers - 3 each
+            PieceType[] nonFlowers = { PieceType.Boat, PieceType.Rock, PieceType.Knotweed, PieceType.Wheel, PieceType.Lotus, PieceType.Orchid };
+            foreach (var type in nonFlowers)
+            {
+                reserves[Player.Host][type] = 3;
+                reserves[Player.Opponent][type] = 3;
+            }
         }
 
-        /// <summary>
-        /// Remove a piece from a player's reserve after placing it.
-        /// </summary>
-        public void RemoveFromReserve(Player player, PieceType type)
+        public bool HasPieceAvailable(Player player, PieceType type)
         {
-            reservedPieces[player].Remove(type);
+            return reserves[player].ContainsKey(type) && reserves[player][type] > 0;
         }
 
-        /// <summary>
-        /// Add a piece to a player's reserve.
-        /// </summary>
-        public void AddToReserve(Player player, PieceType type)
+        public void UsePiece(Player player, PieceType type)
         {
-            reservedPieces[player].Add(type);
+            if (HasPieceAvailable(player, type))
+            {
+                reserves[player][type]--;
+            }
+            else
+            {
+                Debug.LogError($"Player {player} tried to use unavailable piece {type}");
+            }
         }
 
-        /// <summary>
-        /// Get all pieces currently in reserve for a player.
-        /// </summary>
-        public List<PieceType> GetReservedPieces(Player player)
+        public void ReturnPiece(Player player, PieceType type)
         {
-            return new List<PieceType>(reservedPieces[player]);
+            if (reserves[player].ContainsKey(type))
+            {
+                reserves[player][type]++;
+            }
         }
     }
 }

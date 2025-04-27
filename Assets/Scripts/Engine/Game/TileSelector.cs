@@ -29,6 +29,18 @@ namespace PaiSho.Game
 
         private void HandleTileClick(Tile tile)
         {
+            if (GameManager.Instance.IsSpringPhase())
+            {
+                SpringPlacementManager.Instance.TryPlaceOpeningFlower(tile);
+                return;
+            }
+
+            if (PiecePlacementManager.Instance.IsPlacingPiece())
+            {
+                PiecePlacementManager.Instance.TryPlaceSelectedPiece(tile);
+                return;
+            }
+
             if (selectedPiece == null)
             {
                 if (tile.HasPiece() && tile.GetPiece().Owner == GameManager.Instance.GetCurrentPlayer())
@@ -49,6 +61,7 @@ namespace PaiSho.Game
             }
         }
 
+
         private void SelectPiece(Piece piece)
         {
             selectedPiece = piece;
@@ -68,7 +81,10 @@ namespace PaiSho.Game
 
             foreach (var coord in legalMoves)
             {
-                Tile tile = BoardManager.Instance.GetTileAt(coord);
+                int x = (coord % 20) - 9;
+                int z = (coord / 20) - 9;
+
+                Tile tile = BoardManager.Instance.GetTileAt(x, z);
                 if (tile != null)
                 {
                     tile.EnableHighlight();
@@ -76,6 +92,7 @@ namespace PaiSho.Game
                 }
             }
         }
+
 
         private void ClearHighlights()
         {
@@ -89,6 +106,8 @@ namespace PaiSho.Game
         private void MoveSelectedPiece(Tile destinationTile)
         {
             BoardManager.Instance.MovePiece(selectedPiece, destinationTile.GetCoordinate());
+
+            CaptureManager.Instance.CheckForCaptures(selectedPiece); // <-- ADD THIS
 
             DeselectPiece();
 
