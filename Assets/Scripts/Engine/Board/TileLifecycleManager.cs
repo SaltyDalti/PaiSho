@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using PaiSho.Pieces;
 using PaiSho.Game;
-using PaiSho.Board;
 
 namespace PaiSho.Board
 {
@@ -45,56 +44,61 @@ namespace PaiSho.Board
                 {
                     if (piece.WiltLevel < piece.PreviousWiltLevel)
                     {
-                        int points = SeasonManager.Instance.GetCurrentSeason() switch
-                        {
-                            Season.Spring => 2,
-                            Season.Summer => 1,
-                            Season.Autumn => piece.InHarmony ? 3 : 1,
-                            Season.Winter => 2,
-                            _ => 1
-                        };
-                    EchoTileManager.Instance.AddRevivalPoints(piece.Owner, points);
-                }
+                        int points = 1; // Default
 
-                UpdateWiltLevel(piece);
-            }
+                        Season currentSeason = SeasonManager.Instance.GetCurrentSeason();
+
+                        if (currentSeason == Season.Spring)
+                            points = 2;
+                        else if (currentSeason == Season.Summer)
+                            points = 1;
+                        else if (currentSeason == Season.Autumn)
+                            points = piece.InHarmony ? 3 : 1;
+                        else if (currentSeason == Season.Winter)
+                            points = 2;
+
+                        EchoTileManager.Instance.AddRevivalPoints(piece.Owner, points);
+                    }
+
+                    UpdateWiltLevel(piece);
+                }
                 else
                 {
-                piece.FreezeWiltNextTurn = false;
+                    piece.FreezeWiltNextTurn = false;
+                }
             }
         }
-    }
 
-    private void UpdateWiltLevel(Piece piece)
-    {
-        int totalNeglect = Mathf.Max(piece.TurnsSinceMoved, piece.TurnsSinceHarmonized);
+        private void UpdateWiltLevel(Piece piece)
+        {
+            int totalNeglect = Mathf.Max(piece.TurnsSinceMoved, piece.TurnsSinceHarmonized);
 
-        if (totalNeglect >= 4)
-        {
-            piece.WiltLevel = 2;
-            piece.PointValue = -1;
-            piece.SetVisualState("fully-wilted");
+            if (totalNeglect >= 4)
+            {
+                piece.WiltLevel = 2;
+                piece.PointValue = -1;
+                piece.SetVisualState("fully-wilted");
+            }
+            else if (totalNeglect == 3)
+            {
+                piece.WiltLevel = 1;
+                piece.PointValue = 0;
+                piece.SetVisualState("wilted");
+            }
+            else // 0, 1, or 2 turns of neglect
+            {
+                piece.WiltLevel = 0;
+                piece.PointValue = 1;
+                piece.SetVisualState("vibrant");
+            }
         }
-        else if (totalNeglect == 3)
+
+        /// <summary>
+        /// Adds a revival point when Knotweed drains occur.
+        /// </summary>
+        public void RegisterKnotweedDrain(Player fromPlayer)
         {
-            piece.WiltLevel = 1;
-            piece.PointValue = 0;
-            piece.SetVisualState("wilted");
-        }
-        else if (totalNeglect <= 2)
-        {
-            piece.WiltLevel = 0;
-            piece.PointValue = 1;
-            piece.SetVisualState("vibrant");
+            EchoTileManager.Instance.AddRevivalPoints(fromPlayer, 1);
         }
     }
-
-    /// <summary>
-    /// Adds a revival point when Knotweed drains occur.
-    /// </summary>
-    public void RegisterKnotweedDrain(Player fromPlayer)
-    {
-        EchoTileManager.Instance.AddRevivalPoints(fromPlayer, 1);
-    }
-}
 }

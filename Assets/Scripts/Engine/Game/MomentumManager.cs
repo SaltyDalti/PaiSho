@@ -8,7 +8,7 @@ namespace PaiSho.Game
     {
         public static MomentumManager Instance;
 
-        private Dictionary<Player, int> momentumTokens = new ();
+        private Dictionary<Player, int> momentumTokens = new Dictionary<Player, int>();
 
         private void Awake()
         {
@@ -123,5 +123,11 @@ namespace PaiSho.Game
             if (!momentumTokens.ContainsKey(player)) momentumTokens[player] = 0;
             momentumTokens[player] += count;
         }
+
+        public int GetTotalEarned()
+        {
+            return momentumTokens[Player.Host] + momentumTokens[Player.Opponent];
+        }
+
     }
 }

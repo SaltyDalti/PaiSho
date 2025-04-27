@@ -47,13 +47,6 @@ namespace PaiSho.Game
 
             revivalPoints[player] += points;
             Debug.Log($"{player} gained {points} revival points (now {revivalPoints[player]}).");
-
-            // Check for Echo Tile
-            if (revivalPoints[player] >= 10)
-            {
-                EchoTileManager.Instance.CreateEchoTile(player);
-                revivalPoints[player] -= 10;
-            }
         }
 
         public int GetRevivalPoints(Player player)
@@ -65,6 +58,42 @@ namespace PaiSho.Game
         {
             Player opponent = player == Player.Host ? Player.Opponent : Player.Host;
             return CountCapturedBy(player) < CountCapturedBy(opponent);
+        }
+
+        /// <summary>
+        /// Struct representing captured piece data.
+        /// </summary>
+        public struct CapturedPieceInfo
+        {
+            public Player Owner;
+            public PieceType Type;
+            public int Coordinate;
+
+            public CapturedPieceInfo(Player owner, PieceType type, int coordinate)
+            {
+                Owner = owner;
+                Type = type;
+                Coordinate = coordinate;
+            }
+        }
+
+        /// <summary>
+        /// Return all captured piece information for echo summoning.
+        /// </summary>
+        public List<CapturedPieceInfo> GetAllCapturedPieces()
+        {
+            List<CapturedPieceInfo> allCaptured = new List<CapturedPieceInfo>();
+
+
+            foreach (var player in capturedPieces.Keys)
+            {
+                foreach (var type in capturedPieces[player])
+                {
+                    allCaptured.Add(new CapturedPieceInfo(player, type, -1));
+                }
+            }
+
+            return allCaptured;
         }
     }
 }

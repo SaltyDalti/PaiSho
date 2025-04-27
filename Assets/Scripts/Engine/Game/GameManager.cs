@@ -86,6 +86,12 @@ namespace PaiSho.Game
             }
         }
 
+        public int GetTurnNumber()
+        {
+            // Assuming each player takes one turn per "full" turn cycle.
+            return currentPlayerIndex + (springPhase ? 0 : 1);
+        }
+
         public void EndGame(Player ringCreator)
         {
             Debug.Log($"Game has ended due to Harmony Ring formed by {ringCreator}.");

@@ -147,6 +147,19 @@ namespace PaiSho.Pieces
             return PointValue;
         }
 
+        public static bool IsFlowerType(PieceType type)
+        {
+            return type == PieceType.Jasmine ||
+                   type == PieceType.Lily ||
+                   type == PieceType.Jade ||
+                   type == PieceType.Rose ||
+                   type == PieceType.Rhododendron ||
+                   type == PieceType.Chrysanthemum ||
+                   type == PieceType.Lotus ||
+                   type == PieceType.Orchid;
+        }
+
+
 
         public void SetVisualState(string state)
         {
