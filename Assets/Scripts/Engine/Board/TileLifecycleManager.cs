@@ -93,6 +93,17 @@ namespace PaiSho.Board
             }
         }
 
+        public int GetTotalRevived(Player player)
+        {
+            // Temporary default: no revived tracking yet.
+            return 0;
+        }
+
+        public int GetMovedTileCount(Player player)
+        {
+            return 0; // Default for now
+        }
+
         /// <summary>
         /// Adds a revival point when Knotweed drains occur.
         /// </summary>

@@ -52,6 +52,11 @@ namespace PaiSho.Board
             piece.SetBoardCoordinate(toCoordinate);
         }
 
+        public bool IsLegalPosition(int coordinate)
+        {
+            return BoardUtils.IsValidPointCoordinate(coordinate);
+        }
+
         public Piece GetPieceAt(int coordinate)
         {
             piecesByCoordinate.TryGetValue(coordinate, out var piece);

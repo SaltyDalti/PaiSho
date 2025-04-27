@@ -37,7 +37,7 @@ namespace PaiSho.Game
                     validPositions.Add(pos);
             }
 
-            List<Piece> pieces = new ist<Piece>();
+            List<Piece> pieces = new List<Piece>();
             foreach (int pos in validPositions)
             {
                 Piece p = BoardManager.Instance.GetPieceAt(pos);

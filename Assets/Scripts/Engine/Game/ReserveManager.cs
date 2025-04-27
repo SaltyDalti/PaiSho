@@ -21,11 +21,17 @@ namespace PaiSho.Game
             reservedPieces[Player.Opponent] = new List<PieceType>();
         }
 
+        /// <summary>
+        /// Check if a player has a specific piece in reserve.
+        /// </summary>
         public bool HasTile(Player player, PieceType type)
         {
             return reservedPieces[player].Contains(type);
         }
 
+        /// <summary>
+        /// Remove a piece from a player's reserve after placing it.
+        /// </summary>
         public void RemoveFromReserve(Player player, PieceType type)
         {
             reservedPieces[player].Remove(type);
@@ -34,33 +40,17 @@ namespace PaiSho.Game
         /// <summary>
         /// Add a piece to a player's reserve.
         /// </summary>
-        public void AddPieceToReserve(Player player, PieceType type)
+        public void AddToReserve(Player player, PieceType type)
         {
             reservedPieces[player].Add(type);
         }
 
         /// <summary>
-        /// Remove a piece from a player's reserve after placement.
-        /// </summary>
-        public void RemovePieceFromReserve(Player player, PieceType type)
-        {
-            reservedPieces[player].Remove(type);
-        }
-
-        /// <summary>
-        /// Get all reserved pieces for a player.
+        /// Get all pieces currently in reserve for a player.
         /// </summary>
         public List<PieceType> GetReservedPieces(Player player)
         {
             return new List<PieceType>(reservedPieces[player]);
-        }
-
-        /// <summary>
-        /// Check if a player has a specific piece reserved.
-        /// </summary>
-        public bool HasPiece(Player player, PieceType type)
-        {
-            return reservedPieces[player].Contains(type);
         }
     }
 }

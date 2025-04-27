@@ -66,6 +66,11 @@ namespace PaiSho.Game
             DebugLogger.Log($">>> {player} summoned a Ghost Echo Tile: {candidate.Type} at {targetPos}. It must be moved to awaken.");
         }
 
+        public int GetEchoCount(Player player)
+        {
+            return 0; // Default for now
+        }
+
         /// <summary>
         /// Called when a ghost Echo Tile moves for the first time to awaken it.
         /// </summary>
