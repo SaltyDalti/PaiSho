@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using UnityEngine;
+
 
 namespace PaiSho.Board
 {
@@ -40,6 +42,24 @@ namespace PaiSho.Board
         public static bool IsValidPointCoordinate(int coord)
         {
             return coord >= 0 && coord < BoardSize;
+        }
+
+        /// <summary>
+        /// Converts grid (x, z) position into a single integer coordinate (0-399)
+        /// </summary>
+        public static int ToCoordinate(int x, int z)
+        {
+            return (z + 9) * 20 + (x + 9);
+        }
+
+        /// <summary>
+        /// Converts a single coordinate (0-399) back into (x, z) grid position
+        /// </summary>
+        public static Vector2Int FromCoordinate(int coordinate)
+        {
+            int x = (coordinate % 20) - 9;
+            int z = (coordinate / 20) - 9;
+            return new Vector2Int(x, z);
         }
 
         /// <summary>

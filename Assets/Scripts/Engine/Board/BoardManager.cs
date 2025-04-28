@@ -72,8 +72,26 @@ namespace PaiSho.Board
 
         public List<Piece> GetAllPieces()
         {
-            return new List<Piece>(piecesByCoordinate.Values);
+            List<Piece> validPieces = new List<Piece>();
+
+            foreach (var kvp in piecesByCoordinate)
+            {
+                int coordinate = kvp.Key;
+                Piece piece = kvp.Value;
+
+                if (piece != null)
+                {
+                    validPieces.Add(piece);
+                }
+                else
+                {
+                    Debug.LogWarning($"[BoardManager] Null Piece found at coordinate {coordinate}! Skipping.");
+                }
+            }
+
+            return validPieces;
         }
+
 
         public bool IsOccupied(int coordinate)
         {

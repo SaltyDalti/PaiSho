@@ -24,6 +24,14 @@ namespace PaiSho.Game
 
         private PieceType? selectedPieceType = null;
 
+        [Header("Host Materials")]
+        public Material hostBaseMaterial;
+        public Material hostInlayMaterial;
+
+        [Header("Opponent Materials")]
+        public Material opponentBaseMaterial;
+        public Material opponentInlayMaterial;
+
         private void Awake()
         {
             if (Instance != null && Instance != this)
@@ -51,40 +59,81 @@ namespace PaiSho.Game
             return selectedPieceType != null;
         }
 
-        public void TryPlaceSelectedPiece(Tile tile)
+        public void TryPlacePiece(Tile tile)
         {
-            if (!IsPlacingPiece())
+            if (tile == null)
+            {
+                Debug.LogError("Clicked Tile is NULL.");
                 return;
+            }
 
             if (tile.HasPiece())
+            {
+                Debug.Log("Tile already occupied.");
                 return;
+            }
 
             Player player = GameManager.Instance.GetCurrentPlayer();
-            GameObject prefab = GetPrefabForType(selectedPieceType.Value);
+            PieceType typeToPlace;
 
+            if (GameManager.Instance.IsSpringPhase())
+            {
+                typeToPlace = GameManager.Instance.GetOpeningFlower(player);
+            }
+            else
+            {
+                if (selectedPieceType == null)
+                {
+                    Debug.LogWarning("No piece type selected for normal play!");
+                    return;
+                }
+                typeToPlace = selectedPieceType.Value;
+            }
+
+            GameObject prefab = GetPrefabForType(typeToPlace);
             if (prefab == null)
             {
-                Debug.LogError("Missing prefab for piece type: " + selectedPieceType.Value);
+                Debug.LogError($"Prefab for {typeToPlace} is not assigned!");
                 return;
             }
 
             Vector3 spawnPosition = tile.transform.position + Vector3.up * 0.1f;
             GameObject pieceObj = Instantiate(prefab, spawnPosition, Quaternion.identity);
 
+            if (pieceObj == null)
+            {
+                Debug.LogError("Failed to instantiate piece prefab!");
+                return;
+            }
+
             Piece piece = pieceObj.GetComponent<Piece>();
-            piece.Initialize(player, selectedPieceType.Value);
+            if (piece == null)
+            {
+                Debug.LogError("Instantiated object missing Piece.cs script!");
+                return;
+            }
 
-            BoardManager.Instance.PlacePiece(piece, tile.GetCoordinate());
+            piece.Initialize(player, typeToPlace);
+            ApplyOwnershipMaterials(piece, player);
+
+            int x = tile.GetGridPosition().x;
+            int z = tile.GetGridPosition().y;
+            int coordinate = BoardUtils.ToCoordinate(x, z);
+
+            BoardManager.Instance.PlacePiece(piece, coordinate);
             tile.SetPiece(piece);
-            CaptureManager.Instance.CheckForCaptures(piece);
 
-            ReserveManager.Instance.UsePiece(player, selectedPieceType.Value);
-
-            selectedPieceType = null; // Clear placement mode
+            if (!GameManager.Instance.IsSpringPhase())
+            {
+                ReserveManager.Instance.UsePiece(player, typeToPlace);
+                selectedPieceType = null;
+            }
 
             MovementManager.Instance.RegisterPlacement(piece);
             GameManager.Instance.MarkTurnComplete();
             GameManager.Instance.EndTurn();
+
+            Debug.Log($"Placed {piece.Type} at {tile.GetGridPosition()}.");
         }
 
         private GameObject GetPrefabForType(PieceType type)
@@ -118,6 +167,52 @@ namespace PaiSho.Game
                 default:
                     return null;
             }
+        }
+
+        private void ApplyOwnershipMaterials(Piece piece, Player owner)
+        {
+            Transform basePart = piece.transform.Find("Tile");
+            Transform inlayPart = piece.transform.Find("Face");
+
+            if (basePart == null || inlayPart == null)
+            {
+                Debug.LogError("[PiecePlacementManager] ERROR: 'Tile' or 'Face' child not found on Piece prefab!");
+                return;
+            }
+
+            MeshRenderer baseRenderer = basePart.GetComponent<MeshRenderer>();
+            MeshRenderer inlayRenderer = inlayPart.GetComponent<MeshRenderer>();
+
+            if (baseRenderer == null || inlayRenderer == null)
+            {
+                Debug.LogError("[PiecePlacementManager] ERROR: MeshRenderer missing on Tile or Face!");
+                return;
+            }
+
+            if (MaterialManager.Instance == null)
+            {
+                Debug.LogError("[PiecePlacementManager] ERROR: MaterialManager.Instance is NULL!");
+                return;
+            }
+
+            OwnerType ownerType = owner == Player.Host ? OwnerType.Host : OwnerType.Opponent;
+
+            // Debug logging
+            Debug.Log($"[ApplyOwnershipMaterials] Assigning materials for {ownerType}");
+
+            // Force assign .material instead of sharedMaterial
+            Material baseMat = MaterialManager.Instance.TileBaseMaterial;
+            Material inlayMat = MaterialManager.Instance.GetEngravingMaterial(ownerType);
+
+            if (baseMat == null)
+                Debug.LogError("[PiecePlacementManager] ERROR: TileBaseMaterial is NULL!");
+
+            if (inlayMat == null)
+                Debug.LogError("[PiecePlacementManager] ERROR: EngravingMaterial is NULL!");
+
+            baseRenderer.material = baseMat;
+            inlayRenderer.material = inlayMat;
+        }
+
     }
-}
 }

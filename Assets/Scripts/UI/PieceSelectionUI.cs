@@ -6,6 +6,8 @@ namespace PaiSho.Game
 {
     public class PieceSelectionUI : MonoBehaviour
     {
+        public static PieceSelectionUI Instance;
+
         [Header("Piece Buttons")]
         public Button jasmineButton;
         public Button roseButton;
@@ -22,6 +24,14 @@ namespace PaiSho.Game
 
         [Header("UI Panel")]
         public GameObject pieceSelectionPanel;
+
+        private void Awake()
+        {
+            if (Instance != null && Instance != this)
+                Destroy(gameObject);
+            else
+                Instance = this;
+        }
 
         private void Start()
         {
@@ -51,5 +61,18 @@ namespace PaiSho.Game
         {
             PiecePlacementManager.Instance.SelectPieceToPlace(type);
         }
+
+        public void ShowPanel()
+        {
+            if (pieceSelectionPanel != null)
+                pieceSelectionPanel.SetActive(true);
+        }
+
+        public void HidePanel()
+        {
+            if (pieceSelectionPanel != null)
+                pieceSelectionPanel.SetActive(false);
+        }
+
     }
 }

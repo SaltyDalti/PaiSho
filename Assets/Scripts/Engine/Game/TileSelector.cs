@@ -11,6 +11,9 @@ namespace PaiSho.Game
         private Piece selectedPiece;
         private List<Tile> highlightedTiles = new List<Tile>();
 
+        private Tile lastHoveredTile = null;
+        private Piece lastHoveredPiece = null;
+
         private void Update()
         {
             if (Input.GetMouseButtonDown(0))
@@ -18,26 +21,32 @@ namespace PaiSho.Game
                 Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
                 if (Physics.Raycast(ray, out RaycastHit hit, 100f, tileLayerMask))
                 {
+                    Debug.Log($"Raycast hit: {hit.collider.gameObject.name}");
                     Tile clickedTile = hit.collider.GetComponent<Tile>();
                     if (clickedTile != null)
                     {
+                        Debug.Log($"Tile clicked: {clickedTile.GetGridPosition()}");
                         HandleTileClick(clickedTile);
                     }
                 }
             }
+
+            HandleHover();
         }
+
 
         private void HandleTileClick(Tile tile)
         {
             if (GameManager.Instance.IsSpringPhase())
             {
-                SpringPlacementManager.Instance.TryPlaceOpeningFlower(tile);
+                // During Spring Phase, immediately place correct flower (Jasmine/Rose)
+                PiecePlacementManager.Instance.TryPlacePiece(tile);
                 return;
             }
 
             if (PiecePlacementManager.Instance.IsPlacingPiece())
             {
-                PiecePlacementManager.Instance.TryPlaceSelectedPiece(tile);
+                PiecePlacementManager.Instance.TryPlacePiece(tile);
                 return;
             }
 
@@ -60,6 +69,7 @@ namespace PaiSho.Game
                 }
             }
         }
+
 
 
         private void SelectPiece(Piece piece)
@@ -114,6 +124,46 @@ namespace PaiSho.Game
             if (!VictoryManager.Instance.CheckForHarmonyRingEnd(GameManager.Instance.GetCurrentPlayer(), BoardManager.Instance.GetAllPieces()))
             {
                 GameManager.Instance.EndTurn();
+            }
+        }
+
+        private void HandleHover()
+        {
+            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+            if (Physics.Raycast(ray, out RaycastHit hit, 100f, tileLayerMask))
+            {
+                Tile hoveredTile = hit.collider.GetComponent<Tile>();
+
+                if (hoveredTile != null)
+                {
+                    if (hoveredTile != lastHoveredTile)
+                    {
+                        ClearHighlights();
+
+                        if (hoveredTile.HasPiece())
+                        {
+                            Piece piece = hoveredTile.GetPiece();
+
+                            if (piece.Owner == GameManager.Instance.GetCurrentPlayer())
+                            {
+                                HighlightLegalMoves(piece);
+                                lastHoveredPiece = piece;
+                            }
+                        }
+
+                        lastHoveredTile = hoveredTile;
+                    }
+                }
+            }
+            else
+            {
+                // Nothing hovered
+                if (lastHoveredTile != null)
+                {
+                    ClearHighlights();
+                    lastHoveredTile = null;
+                    lastHoveredPiece = null;
+                }
             }
         }
     }

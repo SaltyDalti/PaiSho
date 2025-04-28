@@ -22,8 +22,24 @@ namespace PaiSho.Board
         /// </summary>
         public void OnTurnStart(List<Piece> allPieces)
         {
-            foreach (var piece in allPieces)
+            Debug.Log($"[TileLifecycleManager] Checking managers...");
+
+            if (SeasonManager.Instance == null)
+                Debug.LogError("[TileLifecycleManager] SeasonManager.Instance is NULL!");
+
+            if (EchoTileManager.Instance == null)
+                Debug.LogError("[TileLifecycleManager] EchoTileManager.Instance is NULL!");
+
+            for (int i = 0; i < allPieces.Count; i++)
             {
+                var piece = allPieces[i];
+
+                if (piece == null)
+                {
+                    Debug.LogWarning($"[TileLifecycleManager] Null Piece detected in allPieces list at index {i} / {allPieces.Count}. Skipping.");
+                    continue;
+                }
+
                 if (piece.IsNewThisTurn)
                 {
                     piece.IsNewThisTurn = false;
@@ -57,6 +73,10 @@ namespace PaiSho.Board
                         else if (currentSeason == Season.Winter)
                             points = 2;
 
+                        if (EchoTileManager.Instance == null)
+                        {
+                            Debug.LogError("[TileLifecycleManager] EchoTileManager.Instance is NULL at start of Play Phase!");
+                        }
                         EchoTileManager.Instance.AddRevivalPoints(piece.Owner, points);
                     }
 

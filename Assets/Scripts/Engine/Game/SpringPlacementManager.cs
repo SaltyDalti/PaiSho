@@ -46,14 +46,62 @@ namespace PaiSho.Game
             GameObject pieceObj = Instantiate(prefabToPlace, spawnPosition, Quaternion.identity);
 
             Piece piece = pieceObj.GetComponent<Piece>();
-            piece.Initialize(player, flowerType);
+            if (piece == null)
+            {
+                Debug.LogError("Piece component missing from spawned prefab!");
+                return;
+            }
 
-            BoardManager.Instance.PlacePiece(piece, tile.GetCoordinate());
+
+
+            piece.Initialize(player, flowerType);
+            ApplyOwnershipMaterials(piece, player);
+
+            Vector2Int gridPos = tile.GetGridPosition();
+            int coordinate = BoardUtils.ToCoordinate(gridPos.x, gridPos.y);
+
+            Debug.Log($"Placing piece: {piece}");
+            Debug.Log($"BoardManager Instance: {BoardManager.Instance}");
+            Debug.Log($"Coordinate: {coordinate}");
+
+            BoardManager.Instance.PlacePiece(piece, coordinate);
             tile.SetPiece(piece);
 
             MovementManager.Instance.RegisterPlacement(piece);
             GameManager.Instance.MarkTurnComplete();
             GameManager.Instance.EndTurn();
         }
+
+        private void ApplyOwnershipMaterials(Piece piece, Player owner)
+        {
+            Transform basePart = piece.transform.Find("Tile");
+            Transform inlayPart = piece.transform.Find("Face");
+
+            if (basePart == null || inlayPart == null)
+            {
+                Debug.LogError("[SpringPlacementManager] Tile or Face not found on Piece prefab!");
+                return;
+            }
+
+            MeshRenderer baseRenderer = basePart.GetComponent<MeshRenderer>();
+            MeshRenderer inlayRenderer = inlayPart.GetComponent<MeshRenderer>();
+
+            if (baseRenderer == null || inlayRenderer == null)
+            {
+                Debug.LogError("[SpringPlacementManager] Missing MeshRenderer on Tile or Face!");
+                return;
+            }
+
+            OwnerType ownerType = OwnerType.None;
+            if (owner == Player.Host)
+                ownerType = OwnerType.Host;
+            else if (owner == Player.Opponent)
+                ownerType = OwnerType.Opponent;
+
+            baseRenderer.material = MaterialManager.Instance.TileBaseMaterial;
+            inlayRenderer.material = MaterialManager.Instance.GetEngravingMaterial(ownerType);
+        }
+
+
     }
 }

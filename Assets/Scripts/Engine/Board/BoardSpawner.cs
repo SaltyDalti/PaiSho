@@ -20,17 +20,15 @@ namespace PaiSho.Game
             {
                 for (int z = -9; z <= 9; z++)
                 {
-                    Vector3 worldPosition = new Vector3(x * tileSpacing, 0f, z * tileSpacing);
-                    Quaternion tileRotation = Quaternion.Euler(-90f, 0f, 0f);
+                    Vector3 worldPosition = new Vector3(x * tileSpacing, 0.001f, z * tileSpacing);
 
-                    GameObject tileGO = Instantiate(tilePrefab, worldPosition, tileRotation, boardParent);
+                    // No rotation needed anymore
+                    GameObject tileGO = Instantiate(tilePrefab, worldPosition, Quaternion.identity, boardParent);
                     Tile tile = tileGO.GetComponent<Tile>();
 
                     if (tile != null)
                     {
-                        // Instead of "coordinate", now assign x/z directly
                         tile.SetGridPosition(x, z);
-                        // If needed, you can still register tiles in BoardManager
                         BoardManager.Instance.RegisterTile(x, z, tile);
                     }
                     else

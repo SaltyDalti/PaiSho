@@ -15,6 +15,10 @@ namespace PaiSho.Game
         private bool springPhase = true;
         private bool turnComplete = false;
 
+        private bool hostSpringPlaced = false;
+        private bool opponentSpringPlaced = false;
+
+
         private void Awake()
         {
             if (Instance != null && Instance != this)
@@ -38,6 +42,15 @@ namespace PaiSho.Game
         public void MarkTurnComplete()
         {
             turnComplete = true;
+
+            if (springPhase)
+            {
+                Player player = GetCurrentPlayer();
+                if (player == Player.Host)
+                    hostSpringPlaced = true;
+                else if (player == Player.Opponent)
+                    opponentSpringPlaced = true;
+            }
         }
 
         public bool IsSpringPhase()
@@ -58,20 +71,29 @@ namespace PaiSho.Game
                 return;
             }
 
-            currentPlayerIndex = (currentPlayerIndex + 1) % 2;
-
-            if (GameStateManager.Instance.GetCurrentPhase() == GamePhase.Spring && currentPlayerIndex == 0)
+            if (springPhase)
             {
-                GameStateManager.Instance.AdvancePhase();
-                Debug.Log("Spring Phase complete. Entering normal gameplay.");
+                if (hostSpringPlaced && opponentSpringPlaced)
+                {
+                    GameStateManager.Instance.AdvancePhase();
+                    springPhase = false;
+                    Debug.Log("Spring Phase complete. Entering normal gameplay.");
+
+                    PieceSelectionUI.Instance.ShowPanel();
+                }
             }
+
+            currentPlayerIndex = (currentPlayerIndex + 1) % 2;
 
             turnComplete = false;
 
             List<Piece> allPieces = BoardManager.Instance.GetAllPieces();
 
             // Evaluate tile lifecycle at turn start
-            TileLifecycleManager.Instance.OnTurnStart(allPieces);
+            if (!springPhase)
+            {
+                TileLifecycleManager.Instance.OnTurnStart(allPieces);
+            }
 
             // Check for harmonic ring victory condition
             Player current = GetCurrentPlayer();
