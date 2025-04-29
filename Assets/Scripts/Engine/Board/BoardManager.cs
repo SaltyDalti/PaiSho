@@ -54,8 +54,9 @@ namespace PaiSho.Board
 
         public bool IsLegalPosition(int coordinate)
         {
-            return BoardUtils.IsValidPointCoordinate(coordinate);
+            return BoardUtils.LegalPoints.Contains(coordinate);
         }
+
 
         public Piece GetPieceAt(int coordinate)
         {

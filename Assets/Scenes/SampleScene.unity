@@ -5359,7 +5359,7 @@ GameObject:
   - component: {fileID: 1886951703}
   - component: {fileID: 1886951704}
   m_Layer: 0
-  m_Name: TileSelector
+  m_Name: BoardInteractionManager
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

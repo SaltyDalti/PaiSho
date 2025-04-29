@@ -21,22 +21,34 @@ namespace PaiSho.Game
                 for (int z = -9; z <= 9; z++)
                 {
                     Vector3 worldPosition = new Vector3(x * tileSpacing, 0.001f, z * tileSpacing);
+                    Quaternion tileRotation = Quaternion.Euler(0f, 0f, 0f);
 
-                    // No rotation needed anymore
-                    GameObject tileGO = Instantiate(tilePrefab, worldPosition, Quaternion.identity, boardParent);
+                    GameObject tileGO = Instantiate(tilePrefab, worldPosition, tileRotation, boardParent);
                     Tile tile = tileGO.GetComponent<Tile>();
 
                     if (tile != null)
                     {
                         tile.SetGridPosition(x, z);
                         BoardManager.Instance.RegisterTile(x, z, tile);
+
+                        // Auto Log Check:
+                        int coordinate = BoardUtils.ToCoordinate(x, z);
+                        if (BoardUtils.LegalPoints.Contains(coordinate))
+                        {
+                            // This tile SHOULD exist, but if for some reason not properly registered:
+                            if (BoardManager.Instance.GetTileAt(x, z) == null)
+                            {
+                                Debug.LogWarning($"[BoardSpawner] Expected legal tile missing at ({x},{z}) coordinate {coordinate}");
+                            }
+                        }
                     }
                     else
                     {
-                        Debug.LogError("Tile prefab missing Tile.cs script!");
+                        Debug.LogError("[BoardSpawner] Tile prefab missing Tile.cs script!");
                     }
                 }
             }
         }
+
     }
 }

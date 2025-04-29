@@ -85,21 +85,21 @@ namespace PaiSho.Game
 
             currentPlayerIndex = (currentPlayerIndex + 1) % 2;
 
+            // Important: reset moved/placed tracking
+            MovementManager.Instance.ClearTurnData();
+
             turnComplete = false;
 
             List<Piece> allPieces = BoardManager.Instance.GetAllPieces();
 
-            // Evaluate tile lifecycle at turn start
             if (!springPhase)
             {
                 TileLifecycleManager.Instance.OnTurnStart(allPieces);
             }
 
-            // Check for harmonic ring victory condition
             Player current = GetCurrentPlayer();
             bool gameEnded = VictoryManager.Instance.CheckForHarmonyRingEnd(current, allPieces);
 
-            // Award momentum for harmonious play
             MomentumManager.Instance.EvaluateTurnBonuses(current, allPieces);
 
             if (!gameEnded)
@@ -107,6 +107,7 @@ namespace PaiSho.Game
                 Debug.Log("Turn ended, no victory condition met.");
             }
         }
+
 
         public int GetTurnNumber()
         {

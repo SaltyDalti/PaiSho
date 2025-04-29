@@ -23,6 +23,7 @@ namespace PaiSho.Game
         public void RegisterMove(Piece piece)
         {
             movedThisTurn.Add(piece);
+            piece.HasMovedThisTurn = true;
         }
 
         public void RegisterPlacement(Piece piece)
@@ -61,19 +62,20 @@ namespace PaiSho.Game
                     break;
 
                 case PieceType.Orchid:
-                    legalMoves.AddRange(GetStraightLineMoves(currentCoord, 6, true));
+                    legalMoves.AddRange(GetStraightLineMoves(currentCoord, 6, canJump: true));
                     break;
 
                 case PieceType.Rock:
                 case PieceType.Knotweed:
-                    break; // No movement
+                    // No movement
+                    break;
 
                 case PieceType.Wheel:
-                    legalMoves.AddRange(GetStraightLineMoves(currentCoord, 999)); // Effectively unlimited straight
+                    legalMoves.AddRange(GetStraightLineMoves(currentCoord, 999));
                     break;
 
                 case PieceType.Boat:
-                    legalMoves.AddRange(GetStraightLineMoves(currentCoord, 6)); // Pushing handled elsewhere
+                    legalMoves.AddRange(GetBoatMoves(currentCoord));
                     break;
             }
 
@@ -83,7 +85,7 @@ namespace PaiSho.Game
         private List<int> GetStraightLineMoves(int start, int range, bool canJump = false)
         {
             List<int> moves = new List<int>();
-            int[] directions = { -20, 20, -1, 1 }; // Up, Down, Left, Right
+            int[] directions = { -20, 20, -1, 1 }; // Vertical and horizontal directions only
 
             foreach (var dir in directions)
             {
@@ -91,18 +93,22 @@ namespace PaiSho.Game
                 for (int step = 0; step < range; step++)
                 {
                     current += dir;
-                    if (!BoardManager.Instance.IsLegalPosition(current))
+
+                    if (!BoardUtils.LegalPoints.Contains(current))
                         break;
 
-                    if (!BoardManager.Instance.IsOccupied(current))
-                        moves.Add(current);
-                    else
+                    if (BoardManager.Instance.IsOccupied(current))
                     {
                         if (canJump)
                             continue;
                         else
                             break;
                     }
+
+                    moves.Add(current);
+
+                    if (!canJump && BoardManager.Instance.IsOccupied(current))
+                        break;
                 }
             }
 
@@ -112,7 +118,7 @@ namespace PaiSho.Game
         private List<int> GetStraightAndDiagonalMoves(int start, int range)
         {
             List<int> moves = new List<int>();
-            int[] directions = { -20, 20, -1, 1, -21, -19, 19, 21 }; // All straight + diagonals
+            int[] directions = { -20, 20, -1, 1, -21, -19, 19, 21 }; // Straight and diagonal directions
 
             foreach (var dir in directions)
             {
@@ -120,13 +126,14 @@ namespace PaiSho.Game
                 for (int step = 0; step < range; step++)
                 {
                     current += dir;
-                    if (!BoardManager.Instance.IsLegalPosition(current))
+
+                    if (!BoardUtils.LegalPoints.Contains(current))
                         break;
 
-                    if (!BoardManager.Instance.IsOccupied(current))
-                        moves.Add(current);
-                    else
+                    if (BoardManager.Instance.IsOccupied(current))
                         break;
+
+                    moves.Add(current);
                 }
             }
 
@@ -137,35 +144,67 @@ namespace PaiSho.Game
         {
             List<int> moves = new List<int>();
 
-            var lPaths = new (int firstDir, int secondDir)[]
+            var lPatterns = new (int dx, int dz)[]
             {
-                (-20, -1), (-20, 1),
-                (20, -1), (20, 1),
-                (-1, -20), (-1, 20),
-                (1, -20), (1, 20)
+                (2, 1), (2, -1), (-2, 1), (-2, -1),
+                (1, 2), (1, -2), (-1, 2), (-1, -2)
             };
 
-            foreach (var path in lPaths)
+            Vector2Int startGrid = BoardUtils.FromCoordinate(start);
+
+            foreach (var (dx, dz) in lPatterns)
             {
-                int midStep = start + path.firstDir;
-                int finalStep = midStep + path.firstDir;
-                int target = finalStep + path.secondDir;
+                int targetX = startGrid.x + dx;
+                int targetZ = startGrid.y + dz;
 
-                if (!BoardManager.Instance.IsLegalPosition(midStep))
-                    continue;
-                if (!BoardManager.Instance.IsLegalPosition(finalStep))
-                    continue;
-                if (!BoardManager.Instance.IsLegalPosition(target))
-                    continue;
+                int midX = startGrid.x + (dx / 2);
+                int midZ = startGrid.y + (dz / 2);
 
-                if (BoardManager.Instance.IsOccupied(midStep))
-                    continue;
-                if (BoardManager.Instance.IsOccupied(finalStep))
-                    continue;
-                if (BoardManager.Instance.IsOccupied(target))
+                int midCoord = BoardUtils.ToCoordinate(midX, midZ);
+                int targetCoord = BoardUtils.ToCoordinate(targetX, targetZ);
+
+                if (!BoardUtils.LegalPoints.Contains(midCoord) || BoardManager.Instance.IsOccupied(midCoord))
                     continue;
 
-                moves.Add(target);
+                if (!BoardUtils.LegalPoints.Contains(targetCoord) || BoardManager.Instance.IsOccupied(targetCoord))
+                    continue;
+
+                moves.Add(targetCoord);
+            }
+
+            return moves;
+        }
+
+        private List<int> GetBoatMoves(int start)
+        {
+            List<int> moves = new List<int>();
+            int[] directions = { -20, 20, -1, 1 }; // Boat moves straight only
+
+            foreach (var dir in directions)
+            {
+                int current = start;
+                bool hasPushed = false;
+
+                for (int step = 0; step < 6; step++)
+                {
+                    current += dir;
+
+                    if (!BoardUtils.LegalPoints.Contains(current))
+                        break;
+
+                    if (BoardManager.Instance.IsOccupied(current))
+                    {
+                        if (hasPushed)
+                            break; // Cannot push more than one piece
+                        else
+                        {
+                            hasPushed = true;
+                            continue;
+                        }
+                    }
+
+                    moves.Add(current);
+                }
             }
 
             return moves;
@@ -188,6 +227,10 @@ namespace PaiSho.Game
 
         public void ClearTurnData()
         {
+            foreach (var piece in movedThisTurn)
+            {
+                piece.HasMovedThisTurn = false;
+            }
             movedThisTurn.Clear();
             placedThisTurn.Clear();
         }

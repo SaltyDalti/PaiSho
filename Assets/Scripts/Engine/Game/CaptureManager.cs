@@ -18,7 +18,7 @@ namespace PaiSho.Game
         }
 
         /// <summary>
-        /// Check adjacent pieces around the placed/moved piece and capture enemies in disharmony.
+        /// Checks adjacent pieces around the placed or moved piece, and captures enemy pieces in disharmony.
         /// </summary>
         public void CheckForCaptures(Piece placedPiece)
         {
@@ -35,11 +35,12 @@ namespace PaiSho.Game
                 {
                     if (HarmonyManager.Instance.IsDisharmony(placedPiece, neighbor))
                     {
-                        Debug.Log($"Captured enemy piece at {coord}!");
+                        Debug.Log($"[CaptureManager] Captured enemy piece: {neighbor.Type} at coordinate {coord}");
 
                         BoardManager.Instance.RemovePiece(neighbor);
 
-                        // (Optional) Later: PotManager.Instance.AddCapturedPiece(neighbor);
+                        // TODO: Add captured piece to PotManager if tracking captured pieces.
+                        // PotManager.Instance.AddCapturedPiece(neighbor);
                     }
                 }
             }

@@ -1,5 +1,6 @@
 using UnityEngine;
 using PaiSho.Game;
+using System.Collections.Generic;
 
 namespace PaiSho.Pieces
 {
@@ -175,6 +176,24 @@ namespace PaiSho.Pieces
 
             Player opponent = (Owner == Player.Host) ? Player.Opponent : Player.Host;
             return PotManager.Instance.CountCapturedBy(Owner) < PotManager.Instance.CountCapturedBy(opponent);
+        }
+
+        // --- Harmony Management ---
+        private HashSet<Piece> harmonizedWith = new HashSet<Piece>();
+
+        public bool IsInHarmonyWith(Piece other)
+        {
+            return harmonizedWith.Contains(other);
+        }
+
+        public void AddHarmony(Piece other)
+        {
+            harmonizedWith.Add(other);
+        }
+
+        public void RemoveHarmony(Piece other)
+        {
+            harmonizedWith.Remove(other);
         }
     }
 }
