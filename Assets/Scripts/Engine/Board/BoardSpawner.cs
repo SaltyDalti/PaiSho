@@ -16,9 +16,9 @@ namespace PaiSho.Game
 
         private void SpawnBoardTiles()
         {
-            for (int x = -9; x <= 9; x++)
+            for (int x = -10; x <= 10; x++) // 20 columns
             {
-                for (int z = -9; z <= 9; z++)
+                for (int z = -10; z <= 10; z++) // 20 rows
                 {
                     Vector3 worldPosition = new Vector3(x * tileSpacing, 0.001f, z * tileSpacing);
                     Quaternion tileRotation = Quaternion.Euler(0f, 0f, 0f);
@@ -31,16 +31,13 @@ namespace PaiSho.Game
                         tile.SetGridPosition(x, z);
                         BoardManager.Instance.RegisterTile(x, z, tile);
 
-                        // Auto Log Check:
-                        int coordinate = BoardUtils.ToCoordinate(x, z);
-                        if (BoardUtils.LegalPoints.Contains(coordinate))
+                        // Mark as decorative (non-playable) if outside legal garden
+                        int coord = BoardUtils.ToCoordinate(x, z);
+                        if (!BoardUtils.LegalPoints.Contains(coord))
                         {
-                            // This tile SHOULD exist, but if for some reason not properly registered:
-                            if (BoardManager.Instance.GetTileAt(x, z) == null)
-                            {
-                                Debug.LogWarning($"[BoardSpawner] Expected legal tile missing at ({x},{z}) coordinate {coordinate}");
-                            }
+                            tile.MarkAsDecorative(); // safe public method
                         }
+
                     }
                     else
                     {
@@ -49,6 +46,5 @@ namespace PaiSho.Game
                 }
             }
         }
-
     }
 }

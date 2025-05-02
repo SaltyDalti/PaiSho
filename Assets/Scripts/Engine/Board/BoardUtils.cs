@@ -8,20 +8,22 @@ namespace PaiSho.Board
         public static readonly int BoardWidth = 19;
         public static readonly int BoardHeight = 19;
         public static readonly int BoardSize = BoardWidth * BoardHeight;
-        public static readonly int CenterPortCoordinate = 209; // Update as needed
+        public static readonly int CenterPortCoordinate = 209;
 
         public static readonly HashSet<int> LegalPoints = GenerateLegalPoints();
+
+        public static readonly int[] AllDirections = { -19, 19, -1, 1, -20, -18, 20, 18 };
 
         private static HashSet<int> GenerateLegalPoints()
         {
             HashSet<int> points = new HashSet<int>();
-            int radius = 9;
 
-            for (int x = -radius; x <= radius; x++)
+            for (int x = -9; x <= 9; x++)
             {
-                for (int z = -radius; z <= radius; z++)
+                for (int z = -9; z <= 9; z++)
                 {
-                    if (Mathf.Abs(x) + Mathf.Abs(z) <= radius)
+                    int manhattanDistance = Mathf.Abs(x) + Mathf.Abs(z);
+                    if (manhattanDistance <= 12)
                     {
                         int coord = ToCoordinate(x, z);
                         points.Add(coord);
@@ -31,8 +33,6 @@ namespace PaiSho.Board
 
             return points;
         }
-
-        public static readonly int[] AllDirections = { -19, 19, -1, 1, -20, -18, 20, 18 };
 
         public static bool IsValidPointCoordinate(int coord)
         {

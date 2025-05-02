@@ -8,6 +8,8 @@ public class Tile : MonoBehaviour
     private int x;
     private int z;
 
+    public bool IsDecorative { get; private set; } = false;
+
     public void SetGridPosition(int x, int z)
     {
         this.x = x;
@@ -48,7 +50,7 @@ public class Tile : MonoBehaviour
 
     public void EnableHighlight()
     {
-        if (highlightVisual != null)
+        if (highlightVisual != null && !IsDecorative) // Prevent highlighting decorations
             highlightVisual.SetActive(true);
     }
 
@@ -56,5 +58,10 @@ public class Tile : MonoBehaviour
     {
         if (highlightVisual != null)
             highlightVisual.SetActive(false);
+    }
+
+    public void MarkAsDecorative()
+    {
+        IsDecorative = true;
     }
 }
