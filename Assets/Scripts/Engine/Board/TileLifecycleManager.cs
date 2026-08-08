@@ -9,12 +9,20 @@ namespace PaiSho.Board
     {
         public static TileLifecycleManager Instance;
 
+        private readonly Dictionary<Player, int> revivedCounts = new Dictionary<Player, int>();
+        private readonly Dictionary<Player, int> movedCounts = new Dictionary<Player, int>();
+
         private void Awake()
         {
             if (Instance != null && Instance != this)
                 Destroy(gameObject);
             else
                 Instance = this;
+
+            revivedCounts[Player.Host] = 0;
+            revivedCounts[Player.Opponent] = 0;
+            movedCounts[Player.Host] = 0;
+            movedCounts[Player.Opponent] = 0;
         }
 
         /// <summary>
@@ -47,9 +55,14 @@ namespace PaiSho.Board
                 }
 
                 if (!piece.HasMovedThisTurn)
+                {
                     piece.TurnsSinceMoved++;
+                }
                 else
+                {
                     piece.TurnsSinceMoved = 0;
+                    movedCounts[piece.Owner] = movedCounts.GetValueOrDefault(piece.Owner) + 1;
+                }
 
                 if (!piece.InHarmony)
                     piece.TurnsSinceHarmonized++;
@@ -58,10 +71,12 @@ namespace PaiSho.Board
 
                 if (!piece.FreezeWiltNextTurn)
                 {
-                    if (piece.WiltLevel < piece.PreviousWiltLevel)
-                    {
-                        int points = 1; // Default
+                    int previousWilt = piece.WiltLevel;
+                    UpdateWiltLevel(piece);
 
+                    if (piece.WiltLevel < previousWilt)
+                    {
+                        int points = 1;
                         Season currentSeason = SeasonManager.Instance.GetCurrentSeason();
 
                         if (currentSeason == Season.Spring)
@@ -73,14 +88,11 @@ namespace PaiSho.Board
                         else if (currentSeason == Season.Winter)
                             points = 2;
 
-                        if (EchoTileManager.Instance == null)
-                        {
-                            Debug.LogError("[TileLifecycleManager] EchoTileManager.Instance is NULL at start of Play Phase!");
-                        }
-                        EchoTileManager.Instance.AddRevivalPoints(piece.Owner, points);
+                        revivedCounts[piece.Owner] = revivedCounts.GetValueOrDefault(piece.Owner) + 1;
+                        EchoTileManager.Instance?.AddRevivalPoints(piece.Owner, points);
                     }
 
-                    UpdateWiltLevel(piece);
+                    piece.PreviousWiltLevel = piece.WiltLevel;
                 }
                 else
                 {
@@ -115,13 +127,12 @@ namespace PaiSho.Board
 
         public int GetTotalRevived(Player player)
         {
-            // Temporary default: no revived tracking yet.
-            return 0;
+            return revivedCounts.TryGetValue(player, out int count) ? count : 0;
         }
 
         public int GetMovedTileCount(Player player)
         {
-            return 0; // Default for now
+            return movedCounts.TryGetValue(player, out int count) ? count : 0;
         }
 
         /// <summary>

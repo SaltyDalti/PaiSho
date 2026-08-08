@@ -16,11 +16,17 @@ namespace PaiSho.Game
 
         private void Update()
         {
+            if (Input.GetKeyDown(KeyCode.Escape) || Input.GetMouseButtonDown(1))
+            {
+                PiecePlacementManager.Instance?.ClearSelection();
+                DeselectPiece();
+            }
+
             if (Input.GetMouseButtonDown(0))
             {
                 HandleClick();
             }
-            else if (selectedPiece == null)
+            else if (selectedPiece == null && !PiecePlacementManager.Instance.IsPlacingPiece())
             {
                 HandleHover();
             }
@@ -28,6 +34,9 @@ namespace PaiSho.Game
 
         private void HandleClick()
         {
+            if (Camera.main == null)
+                return;
+
             Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
 
             if (Physics.Raycast(ray, out RaycastHit hit, 100f, tileLayerMask))
@@ -48,20 +57,26 @@ namespace PaiSho.Game
             if (tile == null)
                 return;
 
-            if (GameManager.Instance.IsSpringPhase() || PiecePlacementManager.Instance.IsPlacingPiece())
-            {
-                PiecePlacementManager.Instance.TryPlacePiece(tile);
-                return;
-            }
+            Player current = GameManager.Instance.GetCurrentPlayer();
 
-            if (selectedPiece == null)
+            // Prefer moving your own piece over a pending placement when you click it.
+            if (!GameManager.Instance.IsSpringPhase()
+                && tile.HasPiece()
+                && tile.GetPiece().Owner == current)
             {
-                if (tile.HasPiece() && tile.GetPiece().Owner == GameManager.Instance.GetCurrentPlayer())
+                PiecePlacementManager.Instance?.ClearSelection();
+                if (selectedPiece == tile.GetPiece())
+                {
+                    DeselectPiece();
+                }
+                else
                 {
                     SelectPiece(tile.GetPiece());
                 }
+                return;
             }
-            else
+
+            if (selectedPiece != null)
             {
                 if (legalMoveCoordinates.Contains(tile.GetCoordinate()))
                 {
@@ -70,7 +85,14 @@ namespace PaiSho.Game
                 else
                 {
                     DeselectPiece();
+                    Debug.Log("[BoardInteraction] Cleared selection (clicked non-legal tile).");
                 }
+                return;
+            }
+
+            if (GameManager.Instance.IsSpringPhase() || PiecePlacementManager.Instance.IsPlacingPiece())
+            {
+                PiecePlacementManager.Instance.TryPlacePiece(tile);
             }
         }
 
@@ -86,8 +108,8 @@ namespace PaiSho.Game
         {
             ClearHighlights();
             selectedPiece = piece;
-
             HighlightLegalMoves(piece);
+            Debug.Log($"[BoardInteraction] Selected {piece.Type} at {BoardUtils.FromCoordinate(piece.GetPosition())} — {legalMoveCoordinates.Count} legal moves.");
         }
 
         private void HighlightLegalMoves(Piece piece)
@@ -156,8 +178,13 @@ namespace PaiSho.Game
                 TryBoatPush(startCoord, destCoord, selectedPiece);
 
             MovementManager.Instance.RegisterMove(selectedPiece);
+            if (selectedPiece.IsGhost)
+                EchoTileManager.Instance?.OnEchoMoved(selectedPiece);
+
             if (GameLogManager.Instance != null)
                 GameLogManager.Instance.LogMove(selectedPiece.Owner, selectedPiece.Type, startCoord, destCoord);
+
+            Debug.Log($"[BoardInteraction] Moved {selectedPiece.Type} {BoardUtils.FromCoordinate(startCoord)} → {BoardUtils.FromCoordinate(destCoord)}");
 
             GameManager.Instance.MarkTurnComplete();
             CaptureManager.Instance.CheckForCaptures(selectedPiece);

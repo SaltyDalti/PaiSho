@@ -59,6 +59,11 @@ namespace PaiSho.Game
             return selectedPieceType != null;
         }
 
+        public void ClearSelection()
+        {
+            selectedPieceType = null;
+        }
+
         public void TryPlacePiece(Tile tile)
         {
             if (tile == null)

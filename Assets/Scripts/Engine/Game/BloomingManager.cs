@@ -15,32 +15,50 @@ namespace PaiSho.Game
                 Instance = this;
         }
 
-        /// <summary>
-        /// Check if the Lotus for a player is currently blooming.
-        /// </summary>
         public bool IsBlooming(Player player)
         {
-            return PotManager.Instance.IsLotusBlooming(player);
+            return PotManager.Instance != null && PotManager.Instance.IsLotusBlooming(player);
         }
 
-        /// <summary>
-        /// Apply a bloom visual effect to a Lotus piece if it is blooming.
-        /// </summary>
         public void ApplyBloomVisualIfLotus(Piece piece)
         {
-            if (piece.Type == PieceType.Lotus && IsBlooming(piece.Owner))
-            {
-                piece.SetVisualState("blooming"); // Hook for animation/glow later
-            }
+            if (piece == null || piece.Type != PieceType.Lotus)
+                return;
+
+            if (IsBlooming(piece.Owner))
+                piece.SetVisualState("blooming");
+            else
+                piece.SetVisualState("vibrant");
         }
 
         /// <summary>
-        /// Add a piece to the bloom pot (placeholder for future effect hooks).
+        /// Hook used when a capture feeds bloom/pot economy. Records via PotManager
+        /// and refreshes Lotus bloom visuals for the capturer.
         /// </summary>
         public void AddToPot(Piece piece)
         {
-            // Placeholder for now.
-            Debug.Log($"Added {piece.Type} to bloom pot (no special effect yet).");
+            if (piece == null || PotManager.Instance == null)
+                return;
+
+            // Capture recording is owned by CaptureManager; this remains an effect hook.
+            Debug.Log($"[BloomingManager] Pot effect hook for {piece.Type}.");
+
+            foreach (var lotus in BoardManagerPiecesOfType(PieceType.Lotus))
+                ApplyBloomVisualIfLotus(lotus);
+        }
+
+        private static System.Collections.Generic.List<Piece> BoardManagerPiecesOfType(PieceType type)
+        {
+            var result = new System.Collections.Generic.List<Piece>();
+            if (PaiSho.Board.BoardManager.Instance == null)
+                return result;
+
+            foreach (var piece in PaiSho.Board.BoardManager.Instance.GetAllPieces())
+            {
+                if (piece != null && piece.Type == type)
+                    result.Add(piece);
+            }
+            return result;
         }
     }
 }

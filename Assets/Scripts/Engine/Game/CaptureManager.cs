@@ -63,6 +63,7 @@ namespace PaiSho.Game
                 tile.SetPiece(null);
 
             PotManager.Instance?.RecordCapture(attacker.Owner, target);
+            BloomingManager.Instance?.AddToPot(target);
             DebugLogger.Log($">>> {attacker.Type} captured {target.Type} from {target.Owner} at {targetCoord}.");
             BoardManager.Instance.RemovePiece(target);
             return true;

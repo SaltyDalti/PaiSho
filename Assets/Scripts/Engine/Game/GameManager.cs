@@ -86,20 +86,19 @@ namespace PaiSho.Game
 
             currentPlayerIndex = (currentPlayerIndex + 1) % 2;
             turnNumber++;
-
-            // Important: reset moved/placed tracking
-            MovementManager.Instance.ClearTurnData();
-
             turnComplete = false;
 
             List<Piece> allPieces = BoardManager.Instance.GetAllPieces();
 
             if (!springPhase)
             {
+                // Lifecycle must run before ClearTurnData so HasMovedThisTurn is still valid.
                 TileLifecycleManager.Instance.OnTurnStart(allPieces);
                 SeasonManager.Instance?.AdvanceTurn();
                 SeasonManager.Instance?.EvaluateSeasonalBonuses(GetCurrentPlayer(), allPieces);
             }
+
+            MovementManager.Instance.ClearTurnData();
 
             Player current = GetCurrentPlayer();
             bool gameEnded = VictoryManager.Instance.CheckForHarmonyRingEnd(current, allPieces);

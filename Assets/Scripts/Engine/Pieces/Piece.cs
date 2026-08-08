@@ -165,7 +165,36 @@ namespace PaiSho.Pieces
         public void SetVisualState(string state)
         {
             Debug.Log($"Piece {Type} changed to visual state: {state}");
-            // TODO: Hook this into Unity animations / shaders / materials
+            ApplyVisualTint(state);
+        }
+
+        private void ApplyVisualTint(string state)
+        {
+            Color tint = state switch
+            {
+                "ghost" => new Color(0.65f, 0.8f, 1f, 0.55f),
+                "wilted" => new Color(0.55f, 0.45f, 0.25f, 1f),
+                "fully-wilted" => new Color(0.35f, 0.28f, 0.18f, 1f),
+                "blooming" => new Color(1f, 0.75f, 0.9f, 1f),
+                "vibrant" => Color.white,
+                _ => Color.white
+            };
+
+            foreach (var renderer in GetComponentsInChildren<MeshRenderer>())
+            {
+                if (renderer == null || renderer.material == null)
+                    continue;
+                // Preserve albedo roughly; multiply for wilt/bloom feedback.
+                if (renderer.material.HasProperty("_BaseColor"))
+                {
+                    Color baseColor = renderer.material.GetColor("_BaseColor");
+                    renderer.material.SetColor("_BaseColor", baseColor * tint);
+                }
+                else if (renderer.material.HasProperty("_Color"))
+                {
+                    renderer.material.color *= tint;
+                }
+            }
         }
 
         // --- Blooming Logic ---

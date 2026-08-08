@@ -8,8 +8,9 @@ namespace PaiSho.Game
     {
         public static PotManager Instance;
 
-        private Dictionary<Player, List<PieceType>> capturedPieces = new Dictionary<Player, List<PieceType>>();
-        private Dictionary<Player, int> revivalPoints = new Dictionary<Player, int>();
+        private readonly Dictionary<Player, List<CapturedPieceInfo>> capturedPieces =
+            new Dictionary<Player, List<CapturedPieceInfo>>();
+        private readonly Dictionary<Player, int> revivalPoints = new Dictionary<Player, int>();
 
         private void Awake()
         {
@@ -18,31 +19,38 @@ namespace PaiSho.Game
             else
                 Instance = this;
 
-            capturedPieces[Player.Host] = new List<PieceType>();
-            capturedPieces[Player.Opponent] = new List<PieceType>();
+            capturedPieces[Player.Host] = new List<CapturedPieceInfo>();
+            capturedPieces[Player.Opponent] = new List<CapturedPieceInfo>();
             revivalPoints[Player.Host] = 0;
             revivalPoints[Player.Opponent] = 0;
         }
 
         public void CapturePiece(Player capturer, Piece piece)
         {
-            capturedPieces[capturer].Add(piece.Type);
-            Debug.Log($"{capturer} captured {piece.Type} at {piece.GetPosition()}.");
+            RecordCapture(capturer, piece);
+        }
+
+        public void RecordCapture(Player player, Piece piece)
+        {
+            if (piece == null)
+                return;
+
+            var info = new CapturedPieceInfo(piece.Owner, piece.Type, piece.GetPosition());
+            capturedPieces[player].Add(info);
+            Debug.Log($"{player} captured {piece.Type} at {info.Coordinate}.");
         }
 
         public List<PieceType> GetCapturedPieces(Player player)
         {
-            return new List<PieceType>(capturedPieces[player]);
+            var types = new List<PieceType>();
+            foreach (var info in capturedPieces[player])
+                types.Add(info.Type);
+            return types;
         }
 
         public int CountCapturedBy(Player player)
         {
             return capturedPieces[player].Count;
-        }
-
-        public void RecordCapture(Player player, Piece piece)
-        {
-            capturedPieces[player].Add(piece.Type);
         }
 
         public void AddRevivalPoints(Player player, int points)
@@ -65,9 +73,6 @@ namespace PaiSho.Game
             return CountCapturedBy(player) < CountCapturedBy(opponent);
         }
 
-        /// <summary>
-        /// Struct representing captured piece data.
-        /// </summary>
         public struct CapturedPieceInfo
         {
             public Player Owner;
@@ -82,22 +87,11 @@ namespace PaiSho.Game
             }
         }
 
-        /// <summary>
-        /// Return all captured piece information for echo summoning.
-        /// </summary>
         public List<CapturedPieceInfo> GetAllCapturedPieces()
         {
-            List<CapturedPieceInfo> allCaptured = new List<CapturedPieceInfo>();
-
-
-            foreach (var player in capturedPieces.Keys)
-            {
-                foreach (var type in capturedPieces[player])
-                {
-                    allCaptured.Add(new CapturedPieceInfo(player, type, -1));
-                }
-            }
-
+            var allCaptured = new List<CapturedPieceInfo>();
+            foreach (var list in capturedPieces.Values)
+                allCaptured.AddRange(list);
             return allCaptured;
         }
     }
