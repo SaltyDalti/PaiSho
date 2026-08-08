@@ -80,7 +80,7 @@ namespace PaiSho.Game
                     springPhase = false;
                     Debug.Log("Spring Phase complete. Entering normal gameplay.");
 
-                    PieceSelectionUI.Instance.ShowPanel();
+                    PieceSelectionUI.Instance?.ShowPanel();
                 }
             }
 
