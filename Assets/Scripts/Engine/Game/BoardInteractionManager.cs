@@ -152,15 +152,75 @@ namespace PaiSho.Game
 
             destinationTile.SetPiece(selectedPiece);
 
+            if (selectedPiece.Type == PieceType.Boat)
+                TryBoatPush(startCoord, destCoord, selectedPiece);
+
             MovementManager.Instance.RegisterMove(selectedPiece);
+            if (GameLogManager.Instance != null)
+                GameLogManager.Instance.LogMove(selectedPiece.Owner, selectedPiece.Type, startCoord, destCoord);
+
             GameManager.Instance.MarkTurnComplete();
             CaptureManager.Instance.CheckForCaptures(selectedPiece);
 
-            DeselectPiece(); // Fully reset after move
+            if (selectedPiece.CausesRotation())
+                WheelRotationManager.Instance?.RotateAdjacentTiles(selectedPiece);
 
-            if (!VictoryManager.Instance.CheckForHarmonyRingEnd(GameManager.Instance.GetCurrentPlayer(), BoardManager.Instance.GetAllPieces()))
+            Piece moved = selectedPiece;
+            DeselectPiece();
+
+            if (!VictoryManager.Instance.CheckForHarmonyRingEnd(moved.Owner, BoardManager.Instance.GetAllPieces()))
             {
                 GameManager.Instance.EndTurn();
+            }
+        }
+
+        /// <summary>
+        /// If the boat path crossed an occupied tile, push that piece one step further
+        /// in the same direction (when the landing square is empty and legal).
+        /// </summary>
+        private void TryBoatPush(int startCoord, int destCoord, Piece boat)
+        {
+            Vector2Int start = BoardUtils.FromCoordinate(startCoord);
+            Vector2Int dest = BoardUtils.FromCoordinate(destCoord);
+            int dx = Mathf.Clamp(dest.x - start.x, -1, 1);
+            int dz = Mathf.Clamp(dest.y - start.y, -1, 1);
+            if (dx == 0 && dz == 0)
+                return;
+
+            // Walk from start toward dest; the first occupied cell (not the boat) is the push target.
+            int cur = startCoord;
+            int guard = 0;
+            while (cur != destCoord && guard++ < 12)
+            {
+                Vector2Int g = BoardUtils.FromCoordinate(cur);
+                g.x += dx;
+                g.y += dz;
+                int next = BoardUtils.ToCoordinate(g.x, g.y);
+                Piece blocker = BoardManager.Instance.GetPieceAt(next);
+                if (blocker != null && blocker != boat)
+                {
+                    Vector2Int pushGrid = new Vector2Int(g.x + dx, g.y + dz);
+                    int pushCoord = BoardUtils.ToCoordinate(pushGrid.x, pushGrid.y);
+                    if (!BoardUtils.LegalPoints.Contains(pushCoord) || BoardManager.Instance.IsOccupied(pushCoord))
+                    {
+                        Debug.Log($"[Boat] Cannot push {blocker.Type}; destination blocked.");
+                        return;
+                    }
+
+                    Tile fromTile = BoardManager.Instance.GetTileAt(g.x, g.y);
+                    Tile toTile = BoardManager.Instance.GetTileAt(pushGrid.x, pushGrid.y);
+                    BoardManager.Instance.MovePiece(blocker, pushCoord);
+                    if (fromTile != null) fromTile.SetPiece(null);
+                    if (toTile != null)
+                    {
+                        toTile.SetPiece(blocker);
+                        blocker.transform.position = toTile.transform.position + Vector3.up * 0.1f;
+                    }
+                    HarmonyManager.Instance.UpdateHarmoniesFor(blocker);
+                    Debug.Log($"[Boat] Pushed {blocker.Type} to {pushGrid}");
+                    return;
+                }
+                cur = next;
             }
         }
 

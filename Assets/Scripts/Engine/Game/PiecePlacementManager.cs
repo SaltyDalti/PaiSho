@@ -142,43 +142,82 @@ namespace PaiSho.Game
             }
 
             MovementManager.Instance.RegisterPlacement(piece);
+            if (GameLogManager.Instance != null)
+                GameLogManager.Instance.LogPlacement(player, typeToPlace, coordinate);
+
+            HarmonyManager.Instance?.UpdateHarmoniesFor(piece);
+            CaptureManager.Instance?.CheckForCaptures(piece);
+
             GameManager.Instance.MarkTurnComplete();
-            GameManager.Instance.EndTurn();
+            if (piece.CausesRotation())
+                WheelRotationManager.Instance?.RotateAdjacentTiles(piece);
+
+            if (!VictoryManager.Instance.CheckForHarmonyRingEnd(player, BoardManager.Instance.GetAllPieces()))
+                GameManager.Instance.EndTurn();
 
             Debug.Log($"Placed {piece.Type} at {tile.GetGridPosition()}.");
         }
 
         private GameObject GetPrefabForType(PieceType type)
         {
-            switch (type)
+            GameObject prefab = type switch
             {
-                case PieceType.Jasmine:
-                    return jasminePrefab;
-                case PieceType.Rose:
-                    return rosePrefab;
-                case PieceType.Lily:
-                    return lilyPrefab;
-                case PieceType.Jade:
-                    return jadePrefab;
-                case PieceType.Rhododendron:
-                    return rhododendronPrefab;
-                case PieceType.Chrysanthemum:
-                    return chrysanthemumPrefab;
-                case PieceType.Boat:
-                    return boatPrefab;
-                case PieceType.Rock:
-                    return rockPrefab;
-                case PieceType.Knotweed:
-                    return knotweedPrefab;
-                case PieceType.Wheel:
-                    return wheelPrefab;
-                case PieceType.Lotus:
-                    return lotusPrefab;
-                case PieceType.Orchid:
-                    return orchidPrefab;
-                default:
-                    return null;
-            }
+                PieceType.Jasmine => jasminePrefab,
+                PieceType.Rose => rosePrefab,
+                PieceType.Lily => lilyPrefab,
+                PieceType.Jade => jadePrefab,
+                PieceType.Rhododendron => rhododendronPrefab,
+                PieceType.Chrysanthemum => chrysanthemumPrefab,
+                PieceType.Boat => boatPrefab,
+                PieceType.Rock => rockPrefab,
+                PieceType.Knotweed => knotweedPrefab,
+                PieceType.Wheel => wheelPrefab,
+                PieceType.Lotus => lotusPrefab,
+                PieceType.Orchid => orchidPrefab,
+                _ => null
+            };
+
+            // Nested Blender model prefabs sometimes deserialize as Missing in the
+            // inspector even when YAML guids look correct — fall back to AssetDatabase.
+            if (prefab == null)
+                prefab = LoadPiecePrefabAsset(type);
+
+            return prefab;
+        }
+
+        private static string PrefabAssetName(PieceType type)
+        {
+            return type switch
+            {
+                PieceType.Jasmine => "Tile_Jasmine",
+                PieceType.Rose => "Tile_Rose",
+                PieceType.Lily => "Tile_Lily",
+                PieceType.Jade => "Tile_Jade",
+                PieceType.Rhododendron => "Tile_Rhod",
+                PieceType.Chrysanthemum => "Tile_Chrys",
+                PieceType.Boat => "Tile_Boat",
+                PieceType.Rock => "Tile_Rock",
+                PieceType.Knotweed => "Tile_Knot",
+                PieceType.Wheel => "Tile_Wheel",
+                PieceType.Lotus => "Tile_Lotus",
+                PieceType.Orchid => "Tile_Orchid",
+                _ => null
+            };
+        }
+
+        private static GameObject LoadPiecePrefabAsset(PieceType type)
+        {
+            string assetName = PrefabAssetName(type);
+            if (assetName == null)
+                return null;
+
+#if UNITY_EDITOR
+            string path = $"Assets/Prefabs/Pieces/{assetName}.prefab";
+            var loaded = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            if (loaded != null)
+                return loaded;
+#endif
+            return Resources.Load<GameObject>($"Pieces/{assetName}");
         }
 
         private void ApplyOwnershipMaterials(Piece piece, Player owner)

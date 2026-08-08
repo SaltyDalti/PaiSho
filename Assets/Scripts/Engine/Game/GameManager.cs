@@ -9,11 +9,11 @@ namespace PaiSho.Game
     {
         public static GameManager Instance;
 
-        private bool gameStarted = false;
         private int currentPlayerIndex = 0;
         private Player[] players = new Player[] { Player.Host, Player.Opponent };
         private bool springPhase = true;
         private bool turnComplete = false;
+        private int turnNumber = 0;
 
         private bool hostSpringPlaced = false;
         private bool opponentSpringPlaced = false;
@@ -30,8 +30,9 @@ namespace PaiSho.Game
         private void Start()
         {
             Debug.Log("Spring Opening Phase begins!");
-            gameStarted = true;
             springPhase = true;
+            turnNumber = 0;
+            PieceSelectionUI.Instance?.HidePanel();
         }
 
         public Player GetCurrentPlayer()
@@ -84,6 +85,7 @@ namespace PaiSho.Game
             }
 
             currentPlayerIndex = (currentPlayerIndex + 1) % 2;
+            turnNumber++;
 
             // Important: reset moved/placed tracking
             MovementManager.Instance.ClearTurnData();
@@ -95,6 +97,8 @@ namespace PaiSho.Game
             if (!springPhase)
             {
                 TileLifecycleManager.Instance.OnTurnStart(allPieces);
+                SeasonManager.Instance?.AdvanceTurn();
+                SeasonManager.Instance?.EvaluateSeasonalBonuses(GetCurrentPlayer(), allPieces);
             }
 
             Player current = GetCurrentPlayer();
@@ -104,15 +108,14 @@ namespace PaiSho.Game
 
             if (!gameEnded)
             {
-                Debug.Log("Turn ended, no victory condition met.");
+                Debug.Log($"Turn {turnNumber} ended ({current}'s turn next).");
             }
         }
 
 
         public int GetTurnNumber()
         {
-            // Assuming each player takes one turn per "full" turn cycle.
-            return currentPlayerIndex + (springPhase ? 0 : 1);
+            return turnNumber;
         }
 
         public void EndGame(Player ringCreator)

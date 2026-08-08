@@ -66,8 +66,17 @@ namespace PaiSho.Board
 
         public void RemovePiece(Piece piece)
         {
+            if (piece == null)
+                return;
+
             int coord = piece.GetPosition();
             piecesByCoordinate.Remove(coord);
+
+            Vector2Int grid = BoardUtils.FromCoordinate(coord);
+            Tile tile = GetTileAt(grid.x, grid.y);
+            if (tile != null && tile.GetPiece() == piece)
+                tile.SetPiece(null);
+
             Destroy(piece.gameObject);
         }
 

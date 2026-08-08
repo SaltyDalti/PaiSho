@@ -9,7 +9,18 @@ namespace PaiSho.Game
     {
         public static WheelRotationManager Instance;
 
-        private static readonly int[] rotationOffsets = { -20, -19, 1, 20, 19, -1, -21, -39 };
+        // 8-neighbor ring around the wheel in stride-20 encoding (clockwise from north).
+        private static readonly int[] rotationOffsets =
+        {
+            -BoardUtils.CoordStride,                 // N
+            -BoardUtils.CoordStride + 1,             // NE
+            1,                                       // E
+            BoardUtils.CoordStride + 1,              // SE
+            BoardUtils.CoordStride,                  // S
+            BoardUtils.CoordStride - 1,              // SW
+            -1,                                      // W
+            -BoardUtils.CoordStride - 1              // NW
+        };
 
         private void Awake()
         {

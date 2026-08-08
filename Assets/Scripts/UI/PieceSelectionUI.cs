@@ -51,10 +51,20 @@ namespace PaiSho.Game
 
         private void Update()
         {
-            if (pieceSelectionPanel != null && PiecePlacementManager.Instance != null)
+            if (pieceSelectionPanel == null || PiecePlacementManager.Instance == null || GameManager.Instance == null)
+                return;
+
+            // Hide during Spring Opening; after that, hide only while a placement is armed.
+            if (GameManager.Instance.IsSpringPhase())
             {
-                pieceSelectionPanel.SetActive(!PiecePlacementManager.Instance.IsPlacingPiece());
+                if (pieceSelectionPanel.activeSelf)
+                    pieceSelectionPanel.SetActive(false);
+                return;
             }
+
+            bool shouldShow = !PiecePlacementManager.Instance.IsPlacingPiece();
+            if (pieceSelectionPanel.activeSelf != shouldShow)
+                pieceSelectionPanel.SetActive(shouldShow);
         }
 
         private void SelectPiece(PieceType type)

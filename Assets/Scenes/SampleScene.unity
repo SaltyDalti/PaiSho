@@ -692,18 +692,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f33d7d42f9b80384fb65891a054217a2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  jasminePrefab: {fileID: 4683637235157171144, guid: 7e8479e708c2f6b4eb9a4abdd568955f, type: 3}
-  rosePrefab: {fileID: 808463725857735102, guid: b535cb0fa1e728c489f258cc65d3da84, type: 3}
-  lilyPrefab: {fileID: 5434824735429575305, guid: 5752d55e9acc78844a18eed6d7df1af4, type: 3}
-  jadePrefab: {fileID: 3044292301749719891, guid: 8e6e6472c6ca5bc4c98536d81fbc785f, type: 3}
-  rhododendronPrefab: {fileID: 4311791155062071065, guid: 5bc1e4f0cd200bb4799a6fa021be0c0f, type: 3}
-  chrysanthemumPrefab: {fileID: 6382359903631947281, guid: b2db6d3f8950b6a47a26ce5204c57deb, type: 3}
-  boatPrefab: {fileID: 8176482734445759268, guid: c7fc0280598164d42a510bf4ae8f27d6, type: 3}
-  rockPrefab: {fileID: 2085488889209808670, guid: fa57557baf85a274cb42fc96e09285c7, type: 3}
-  knotweedPrefab: {fileID: 5345019329029887108, guid: 901af8757a63d2240ba7bd7bae924472, type: 3}
-  wheelPrefab: {fileID: 209827693886926945, guid: 4ce014937e1c91347a4f96a825099ca5, type: 3}
-  lotusPrefab: {fileID: 3028956278549766300, guid: 8bceb40c778da5042ab777b2dc3996d5, type: 3}
-  orchidPrefab: {fileID: 424378298271641859, guid: 864e1e8ea433191498b78cc6dc118396, type: 3}
+  jasminePrefab: {fileID: 100100000, guid: 7e8479e708c2f6b4eb9a4abdd568955f, type: 3}
+  rosePrefab: {fileID: 100100000, guid: b535cb0fa1e728c489f258cc65d3da84, type: 3}
+  lilyPrefab: {fileID: 100100000, guid: 5752d55e9acc78844a18eed6d7df1af4, type: 3}
+  jadePrefab: {fileID: 100100000, guid: 8e6e6472c6ca5bc4c98536d81fbc785f, type: 3}
+  rhododendronPrefab: {fileID: 100100000, guid: 5bc1e4f0cd200bb4799a6fa021be0c0f, type: 3}
+  chrysanthemumPrefab: {fileID: 100100000, guid: b2db6d3f8950b6a47a26ce5204c57deb, type: 3}
+  boatPrefab: {fileID: 100100000, guid: c7fc0280598164d42a510bf4ae8f27d6, type: 3}
+  rockPrefab: {fileID: 100100000, guid: fa57557baf85a274cb42fc96e09285c7, type: 3}
+  knotweedPrefab: {fileID: 100100000, guid: 901af8757a63d2240ba7bd7bae924472, type: 3}
+  wheelPrefab: {fileID: 100100000, guid: 4ce014937e1c91347a4f96a825099ca5, type: 3}
+  lotusPrefab: {fileID: 100100000, guid: 8bceb40c778da5042ab777b2dc3996d5, type: 3}
+  orchidPrefab: {fileID: 100100000, guid: 864e1e8ea433191498b78cc6dc118396, type: 3}
   hostBaseMaterial: {fileID: 2100000, guid: 7b5e1a75d0b24c06a81db6cd78e9fa10, type: 2}
   hostInlayMaterial: {fileID: 2100000, guid: 9ba6495f48e44476a8f65ace46fd1bd6, type: 2}
   opponentBaseMaterial: {fileID: 2100000, guid: 7b5e1a75d0b24c06a81db6cd78e9fa10, type: 2}
@@ -1017,7 +1017,7 @@ Camera:
   m_GameObject: {fileID: 330585543}
   m_Enabled: 1
   serializedVersion: 2
-  m_ClearFlags: 4
+  m_ClearFlags: 1
   m_BackGroundColor: {r: 0.19215687, g: 0.3019608, b: 0.4745098, a: 0}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2

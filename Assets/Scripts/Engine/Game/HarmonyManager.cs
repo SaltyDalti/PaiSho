@@ -31,9 +31,9 @@ namespace PaiSho.Game
             if (!a.CanHarmonizeWith(b))
                 return false;
 
+            // Chebyshev distance: 1 means orthogonally or diagonally adjacent.
             int distance = GetDistance(a.GetPosition(), b.GetPosition());
-
-            return distance == 1 || distance == 19 || distance == 20 || distance == 21;
+            return distance == 1;
         }
 
         /// <summary>

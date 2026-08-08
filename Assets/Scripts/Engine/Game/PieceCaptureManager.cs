@@ -1,9 +1,12 @@
 using UnityEngine;
 using PaiSho.Pieces;
-using PaiSho.Board;
 
 namespace PaiSho.Game
 {
+    /// <summary>
+    /// Deprecated shim. Capture + pot recording now lives in <see cref="CaptureManager"/>.
+    /// Kept so any leftover scene references do not break; forwards to CaptureManager.
+    /// </summary>
     public class PieceCaptureManager : MonoBehaviour
     {
         public static PieceCaptureManager Instance;
@@ -16,24 +19,11 @@ namespace PaiSho.Game
                 Instance = this;
         }
 
-        /// <summary>
-        /// Attempt to capture a target piece with an attacker.
-        /// </summary>
         public bool TryCapture(Piece attacker, Piece target)
         {
-            if (!target.CanBeCaptured())
-            {
-                Debug.Log($">>> {target.Type} is immune to capture during {SeasonManager.Instance.GetCurrentSeason()}.");
+            if (CaptureManager.Instance == null)
                 return false;
-            }
-
-            PotManager.Instance.RecordCapture(attacker.Owner, target);
-
-            DebugLogger.Log($">>> {attacker.Type} captured {target.Type} from {target.Owner}.");
-            BoardManager.Instance.RemovePiece(target);
-
-            Debug.Log($">>> {attacker.Owner} captured {target.Type}!");
-            return true;
+            return CaptureManager.Instance.TryCapture(attacker, target);
         }
     }
 }

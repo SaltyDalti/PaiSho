@@ -189,11 +189,13 @@ namespace PaiSho.Pieces
         public void AddHarmony(Piece other)
         {
             harmonizedWith.Add(other);
+            InHarmony = harmonizedWith.Count > 0;
         }
 
         public void RemoveHarmony(Piece other)
         {
             harmonizedWith.Remove(other);
+            InHarmony = harmonizedWith.Count > 0;
         }
     }
 }
