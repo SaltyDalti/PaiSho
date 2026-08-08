@@ -71,5 +71,20 @@ namespace PaiSho.Domain
             }
             return neighbors;
         }
+
+        /// <summary>
+        /// Orthogonal neighbors only (N/S/E/W). Used by capture adjacency and harmonic-ring paths.
+        /// </summary>
+        public static List<int> GetOrthogonalNeighbors(int coord)
+        {
+            var neighbors = new List<int>(4);
+            foreach (int offset in OrthoDirections)
+            {
+                int neighbor = coord + offset;
+                if (IsValidPointCoordinate(neighbor))
+                    neighbors.Add(neighbor);
+            }
+            return neighbors;
+        }
     }
 }
