@@ -7,7 +7,8 @@ runs in-process in the Unity Editor / a built player.
 - Engine version: `6000.0.47f1` (pinned in `ProjectSettings/ProjectVersion.txt`)
 - Render pipeline: Universal Render Pipeline (URP)
 - Language: C# under `Assets/Scripts/` (namespaces `PaiSho.*`)
-- Main scene: `Assets/Scenes/GamePlay.unity`
+- **Playable scene: `Assets/Scenes/SampleScene.unity`** (contains GameManager, BoardSpawner, UI, etc.)
+- `Assets/Scenes/GamePlay.unity` is an empty stub (camera/light/plane only) — do not use it to run the game
 - Package manager: Unity Package Manager (`Packages/manifest.json` + `Packages/packages-lock.json`)
 
 ## Cursor Cloud specific instructions
@@ -19,34 +20,49 @@ update script has already installed the editor and system libraries.
 ### Where things live (installed outside the repo, persisted via the VM snapshot)
 - Unity Editor binary: `/opt/unity/editor/Editor/Unity` (version `6000.0.47f1`)
 - Helper scripts: `/opt/unity/bin/unity-activate.sh`, `/opt/unity/bin/unity-run.sh`
+- Licensing Client: `/opt/unity/editor/Editor/Data/Resources/Licensing/Client/Unity.Licensing.Client`
 - Manual activation file (`.alf`): `/opt/unity/Unity_v6000.0.47f1.alf`
+- License cache: `~/.config/unity3d/Unity/licenses/`
 
 ### Licensing (REQUIRED first step, and the main gotcha)
-Unity has **no anonymous license**; a Unity account or license file is mandatory. Without it
-every headless run ends with `No valid Unity Editor license found`. Provide credentials as
-secrets, then activate. Credentials are consumed only during activation; the resulting license
-is cached under `~/.local/share/unity3d/` and `~/.config/unity3d/`.
+Unity has **no anonymous license**. A free **Personal** license is enough (no serial required).
 
-- Credential activation (Personal — omit serial; Pro/Plus — set `UNITY_SERIAL`):
-  `UNITY_EMAIL=... UNITY_PASSWORD=... /opt/unity/bin/unity-activate.sh`
-- Offline/manual activation: upload `/opt/unity/Unity_v6000.0.47f1.alf` at
-  `https://license.unity3d.com/manual` to obtain a `.ulf`, then
-  `UNITY_ULF_PATH=/path/to.ulf /opt/unity/bin/unity-activate.sh`
+**Important:** In Unity 6, `Unity -batchmode -username … -password …` alone logs in but does **not**
+grant a Personal entitlement (`com.unity.editor.headless was not found`). Always activate via the
+helper, which uses the Licensing Client for Personal:
 
-### Run / build / "lint" (all headless via Xvfb)
-There is no separate lint step; the compiler is the lint. Headless GL uses Mesa `llvmpipe`
-(set `LIBGL_ALWAYS_SOFTWARE=1`, already set by the helper).
+```bash
+UNITY_EMAIL=... UNITY_PASSWORD=... /opt/unity/bin/unity-activate.sh
+# under the hood: Unity.Licensing.Client --activate-all --include-personal --username … --password …
+```
+
+- Pro/Plus: also set `UNITY_SERIAL=...` (helper then uses the editor `-serial` path)
+- Offline/manual: upload `/opt/unity/Unity_v6000.0.47f1.alf` at `https://license.unity3d.com/manual`
+  to obtain a `.ulf`, then `UNITY_ULF_PATH=/path/to.ulf /opt/unity/bin/unity-activate.sh`
+- Verify: `…/Unity.Licensing.Client --showEntitlements` should list `com.unity.editor`
+  (and usually `com.unity.editor.headless`)
+
+### Run / build / "lint"
+There is no separate lint step or test suite; the compiler is the lint. Headless GL uses Mesa
+`llvmpipe` (`LIBGL_ALWAYS_SOFTWARE=1`, already set by the helpers).
 
 - Import + compile scripts (fastest correctness check):
   `/opt/unity/bin/unity-run.sh import`
-- Interactive/headless editor (virtual display): `/opt/unity/bin/unity-run.sh editor`
-- Raw editor invocation: `/opt/unity/bin/unity-run.sh raw -batchmode -quit -projectPath /workspace ...`
+- Interactive editor on the Desktop (`DISPLAY=:1`):
+  `DISPLAY=:1 LIBGL_ALWAYS_SOFTWARE=1 /opt/unity/editor/Editor/Unity -projectPath /workspace`
+  Then open **SampleScene** and press Play. Console should log `Spring Opening Phase begins!`
+  and BoardSpawner creates a 21×21 tile grid.
+- Batch/Xvfb editor helper: `/opt/unity/bin/unity-run.sh editor`
 
 Notes / gotchas:
-- Always wrap editor invocations in `xvfb-run` (the helpers do this). `-nographics` is fine for
-  import/build; drop it and use a real virtual display to render Play Mode / the game window.
-- There is **no `BuildScript`/`-executeMethod` build entry point in the repo**. To produce a
-  standalone player you must add a static `BuildPipeline.BuildPlayer(...)` editor method first,
-  or build interactively. Play Mode via the editor is the simplest way to run the game.
+- Always wrap headless editor invocations in `xvfb-run` (the helpers do this). `-nographics` is
+  fine for import; drop it (and use a virtual/Desktop display) to render Play Mode.
+- `-executeMethod` + `EditorApplication.EnterPlaymode()` is unreliable under `-batchmode` here;
+  prefer the Desktop editor for Play Mode demos.
+- There is **no `BuildScript`/`-executeMethod` build entry point** in the repo. Add a static
+  `BuildPipeline.BuildPlayer(...)` editor method first, or build interactively.
+- Known project-content gaps (not env failures): some piece prefab references on managers may be
+  unset (`Prefab for 'Jasmine' is not assigned!`), and tile visuals can be incomplete — core
+  Spring Opening / board spawn / click handling still run.
 - `Assets/Scripts.zip` and `minimal-kiwi-2.0.1.vsix` in the repo root are stray artifacts,
   unrelated to running the game.
