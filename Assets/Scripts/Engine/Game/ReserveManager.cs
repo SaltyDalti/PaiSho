@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using PaiSho.Pieces;
+using PaiSho.Domain;
 
 namespace PaiSho.Game
 {
@@ -22,24 +23,8 @@ namespace PaiSho.Game
 
         private void InitializeReserves()
         {
-            reserves[Player.Host] = new Dictionary<PieceType, int>();
-            reserves[Player.Opponent] = new Dictionary<PieceType, int>();
-
-            // Flowers - 6 each
-            PieceType[] flowers = { PieceType.Jasmine, PieceType.Lily, PieceType.Jade, PieceType.Rose, PieceType.Rhododendron, PieceType.Chrysanthemum };
-            foreach (var flower in flowers)
-            {
-                reserves[Player.Host][flower] = 6;
-                reserves[Player.Opponent][flower] = 6;
-            }
-
-            // Non-Flowers and Special Flowers - 3 each
-            PieceType[] nonFlowers = { PieceType.Boat, PieceType.Rock, PieceType.Knotweed, PieceType.Wheel, PieceType.Lotus, PieceType.Orchid };
-            foreach (var type in nonFlowers)
-            {
-                reserves[Player.Host][type] = 3;
-                reserves[Player.Opponent][type] = 3;
-            }
+            reserves[Player.Host] = StartingReserves.Create();
+            reserves[Player.Opponent] = StartingReserves.Create();
         }
 
         public bool HasPieceAvailable(Player player, PieceType type)

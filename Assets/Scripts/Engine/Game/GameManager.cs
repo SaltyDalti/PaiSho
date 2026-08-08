@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using PaiSho.Pieces;
 using PaiSho.Board;
+using PaiSho.Domain;
 
 namespace PaiSho.Game
 {
@@ -61,7 +62,8 @@ namespace PaiSho.Game
 
         public PieceType GetOpeningFlower(Player player)
         {
-            return player == Player.Host ? PieceType.Jasmine : PieceType.Rose;
+            Seat seat = player == Player.Host ? Seat.Host : Seat.Opponent;
+            return PlacementRules.GetOpeningFlower(seat);
         }
 
         public void EndTurn()
