@@ -11,8 +11,16 @@ Unity 6 URP project for a garden-rules Pai Sho match (title → spring → play 
 ## Layout
 
 - `Assets/PaiSho/` — product code (Runtime / Editor / Tests)
+  - `Runtime/Domain/` — pure rules (no UnityEngine); covered by headless tests
 - `docs/` — RULES, SHIP checklist, STRUCTURE
-- `SourceArt/` — Blender sources (not required to play)
+- `tests/PaiSho.Rules.Tests/` — `dotnet test` for Domain
+- `SourceArt/` — Blender sources (local/gitignored; not required to play)
+
+## Verify rules
+
+```bash
+dotnet test tests/PaiSho.Rules.Tests
+```
 
 ## Ship gate
 

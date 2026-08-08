@@ -11,32 +11,8 @@ namespace PaiSho.Game
         public const string HostTilesRootName = "HostCapturePotTiles";
         public const string OpponentTilesRootName = "OpponentCapturePotTiles";
 
-        public static bool TryGetBoardAxes(BoardLayout layout, out Vector3 towardWest, out Vector3 boardAxis)
-        {
-            towardWest = Vector3.left;
-            boardAxis = Vector3.forward;
-
-            if (layout == null)
-                return false;
-
-            Vector3 westGate = layout.CoordinateToWorld(BoardUtils.WestGate);
-            Vector3 middle = layout.CoordinateToWorld(BoardUtils.MiddleGate);
-            towardWest = westGate - middle;
-            towardWest.y = 0f;
-            if (towardWest.sqrMagnitude < 0.0001f)
-                towardWest = layout.Origin.right;
-            towardWest.Normalize();
-
-            Vector3 southGate = layout.CoordinateToWorld(BoardUtils.SouthGate);
-            Vector3 northGate = layout.CoordinateToWorld(BoardUtils.NorthGate);
-            boardAxis = northGate - southGate;
-            boardAxis.y = 0f;
-            if (boardAxis.sqrMagnitude < 0.0001f)
-                boardAxis = layout.Origin.forward;
-            boardAxis.Normalize();
-
-            return true;
-        }
+        public static bool TryGetBoardAxes(BoardLayout layout, out Vector3 towardWest, out Vector3 boardAxis) =>
+            BoardSideLayoutUtility.TryGetBoardAxes(layout, out towardWest, out boardAxis);
 
         public static Vector3 ComputeDefaultAnchor(BoardLayout layout, Player player)
         {
@@ -157,26 +133,11 @@ namespace PaiSho.Game
         public static float ResolveStackStepForPreview(Transform slotRoot, float cellSpacing) =>
             ResolveStackWorldStep(slotRoot, cellSpacing);
 
-        private static void ApplySampleTilePose(Transform visual, Transform sample, Transform tilesRoot)
-        {
-            Vector3 parentLossy = tilesRoot.lossyScale;
-            Vector3 sampleLossy = sample.lossyScale;
-            visual.SetPositionAndRotation(sample.position, sample.rotation);
-            visual.localScale = new Vector3(
-                sampleLossy.x / Mathf.Max(parentLossy.x, 0.0001f),
-                sampleLossy.y / Mathf.Max(parentLossy.y, 0.0001f),
-                sampleLossy.z / Mathf.Max(parentLossy.z, 0.0001f));
-        }
+        private static void ApplySampleTilePose(Transform visual, Transform sample, Transform tilesRoot) =>
+            BoardSideLayoutUtility.ApplySampleTilePose(visual, sample, tilesRoot);
 
-        private static void EnsureRuntimeTileVisible(GameObject visual, PieceType pieceType)
-        {
-            visual.SetActive(true);
-            foreach (Renderer renderer in visual.GetComponentsInChildren<Renderer>(true))
-                renderer.enabled = true;
-
-            if (visual.TryGetComponent(out Piece piece))
-                PieceMaterialUtility.ApplyPieceTheme(visual, pieceType, piece.Owner);
-        }
+        private static void EnsureRuntimeTileVisible(GameObject visual, PieceType pieceType) =>
+            BoardSideLayoutUtility.EnsureRuntimeTileVisible(visual, pieceType);
 
         private static float ResolveStackWorldStep(Transform slotRoot, float cellSpacing)
         {

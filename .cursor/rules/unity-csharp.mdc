@@ -1,0 +1,14 @@
+---
+description: Unity/C# conventions for the Pai Sho client
+globs: Assets/**/*.cs
+alwaysApply: false
+---
+
+# Unity C# conventions
+
+- Prefer pure logic in `Assets/PaiSho/Runtime/Domain/` over growing MonoBehaviour managers.
+- Managers stay singletons for now; do not introduce a second DI framework without an explicit task.
+- Do not rename serialized fields casually — it breaks Inspector wiring in `SampleScene`.
+- Avoid editing `.meta` / scene / prefab YAML unless required for the feature.
+- Legacy `UnityEngine.Input` is used in gameplay UI; do not migrate input systems unless asked.
+- Log with clear prefixes like `[BoardInteraction]`; keep player-facing strings in UI scripts.

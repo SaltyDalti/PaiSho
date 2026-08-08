@@ -97,6 +97,7 @@ namespace PaiSho.Game
             }
 
             WoodTheme.EnsureMeshLighting(visual);
+            BoardSideLayoutUtility.EnsureRuntimeTileVisible(visual, pieceType);
         }
 
         private static Transform FindSampleTile(Transform slotMarker)

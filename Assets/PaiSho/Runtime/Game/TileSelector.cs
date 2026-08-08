@@ -148,21 +148,8 @@ namespace PaiSho.Game
 
                     // Animated path already released the victim; instant/headless may not have.
                     // Always clear the square before MovePiece or landing fails silently.
-                    if (target.BoardCoordinate >= 0)
-                    {
-                        PotManager.Instance.RecordCapture(target, piece.Owner, capturedFrom);
-                        if (PotVisualManager.Instance != null)
-                            PotVisualManager.Instance.SendToPot(target, piece.Owner);
-                        else
-                            BoardManager.Instance.ReleasePieceFromBoard(target);
-                    }
-
-                    GameLogManager.Instance?.Log(
-                        ActionType.Capture,
-                        piece.Owner,
-                        target.Type,
-                        capturedFrom,
-                        coordinate);
+                    if (target.BoardCoordinate >= 0 && CaptureManager.Instance != null)
+                        CaptureManager.Instance.TryResolveCapture(piece, target, capturedFrom);
                 }
 
                 if (legalMove.HasPush)

@@ -1,130 +1,29 @@
-
-
-
-using UnityEngine;
-using PaiSho.Board;
 using PaiSho.Pieces;
-
-
-
-
-
-
+using UnityEngine;
 
 namespace PaiSho.Game
-
-
-
 {
-
-
-
+    /// <summary>
+    /// Compatibility shim — prefer <see cref="CaptureManager.TryResolveCapture"/>.
+    /// </summary>
     public class PieceCaptureManager : MonoBehaviour
-
-
-
     {
-
-
-
         public static PieceCaptureManager Instance;
 
-
-
-
-
-
-
         private void Awake()
-
-
-
         {
-
-
-
             if (Instance != null && Instance != this)
-
-
-
                 Destroy(gameObject);
-
-
-
             else
-
-
-
                 Instance = this;
-
-
-
         }
-
-
-
-
-
-
 
         public bool TryCapture(Piece attacker, Piece target)
-
-
-
         {
-
-
-
-            if (!target.CanBeCaptured())
-
-
-
-            {
-
-
-
-                Debug.Log($">>> {target.Type} is immune to capture during {SeasonManager.Instance.GetCurrentSeason()}");
-
-
-
+            if (CaptureManager.Instance == null)
                 return false;
 
-
-
-            }
-
-
-
-
-
-
-
-            PotManager.Instance.RecordCapture(target);
-
-
-            DebugLogger.Log($"{attacker.Type} captured {target.Type} from {target.Owner}");
-
-            BoardManager.Instance.RemovePiece(target);
-
-
-
-            Debug.Log($">>> {attacker.Owner} captured {target.Type}!");
-
-
-
-            return true;
-
-
-
+            return CaptureManager.Instance.TryResolveCapture(attacker, target);
         }
-
-
-
     }
-
-
-
 }
-
-
-

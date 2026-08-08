@@ -12,6 +12,9 @@ namespace PaiSho.Game
                 return;
 
             PieceFeedbackManager.Instance?.CancelAll();
+            GameInputController.Instance?.ClearSelection();
+            LegalMoveHighlighter.Instance?.Clear();
+
             BoardManager.Instance.ClearAllPieces();
             BoatManager.Instance?.ClearAll();
             PotManager.Instance?.ClearCaptured();
@@ -32,11 +35,12 @@ namespace PaiSho.Game
             GameLogManager.Instance?.ClearEntries();
             AiPlanMemory.Clear();
             GameplayFeedback.Clear();
-            GameInputController.Instance?.ClearSelection();
-            LegalMoveHighlighter.Instance?.Clear();
             GameplayVisualizer.Instance?.Refresh();
             GameManager.Instance.RefreshLiveScores();
             HandTrayController.Instance?.Refresh();
+
+            if (AiController.Instance != null)
+                AiController.Instance.SetAiEnabled(GameSession.AiEnabled);
 
             DebugLogger.Log("--- New match ---");
             DebugLogger.Log("Pai Sho ready. Spring: random flower draws - place on your side.");

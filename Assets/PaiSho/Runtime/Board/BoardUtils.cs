@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using PaiSho.Domain;
 using PaiSho.Game;
 
 namespace PaiSho.Board
@@ -9,6 +10,12 @@ namespace PaiSho.Board
         public const int GridIntervals = GridSize - 1;
         public const int NumPoints = GridSize * GridSize;
         public const int ReserveSize = 54;
+
+        /// <summary>Stride-20 board encoding shared with Domain tests.</summary>
+        public static int ToCoordinate(int x, int z) => BoardCoords.ToCoordinate(x, z);
+
+        public static GridPos FromCoordinate(int coordinate) => BoardCoords.FromCoordinate(coordinate);
+
 
         public const int NorthGate = 332;
         public const int EastGate = 172;

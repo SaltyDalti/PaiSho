@@ -15,6 +15,7 @@ PaiSho/                          # ← open THIS in Unity Hub / clone root
   Assets/
     PaiSho/                      # product code
       Runtime/
+        Domain/                    # pure rules (no UnityEngine)
       Editor/
       Tests/EditMode/
     Resources/                   # Board, PieceVisuals, Scene — keep keys stable

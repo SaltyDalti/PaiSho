@@ -170,12 +170,17 @@ namespace PaiSho.Game
                 else
                 {
                     GameAction action = AiScorer.PickAction(actions, current);
-                    int moveFrom = action.Kind == GameActionKind.Move && action.Piece != null
-                        ? action.Piece.BoardCoordinate
+                    GameAction preferred = action;
+                    int moveFrom = preferred.Kind == GameActionKind.Move && preferred.Piece != null
+                        ? preferred.Piece.BoardCoordinate
                         : -1;
-                    advanced = ExecuteHeadless(action);
+                    advanced = AiController.TryExecuteWithFallback(ref action, actions, current);
                     if (advanced && action.Kind == GameActionKind.Move && action.Piece != null)
+                    {
+                        if (!ReferenceEquals(preferred.Piece, action.Piece))
+                            moveFrom = -1;
                         AiPlanMemory.RecordMove(current, action.Piece, moveFrom, action.Coordinate);
+                    }
 
                     // After a move: buy Extra Move + second action if valuable, else end the held turn.
                     if (advanced && action.Kind == GameActionKind.Move &&

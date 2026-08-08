@@ -155,13 +155,18 @@ namespace PaiSho.Game
                 GameplayFeedback.Show(DescribeAction(action), 4.5f);
                 UiAudio.Instance?.PlayNotify();
 
-                int moveFrom = action.Kind == GameActionKind.Move && action.Piece != null
-                    ? action.Piece.BoardCoordinate
+                GameAction preferred = action;
+                int moveFrom = preferred.Kind == GameActionKind.Move && preferred.Piece != null
+                    ? preferred.Piece.BoardCoordinate
                     : -1;
 
-                bool executed = Execute(action);
+                bool executed = TryExecuteWithFallback(ref action, actions, player);
                 if (action.Kind == GameActionKind.Move && action.Piece != null && executed)
+                {
+                    if (!ReferenceEquals(preferred.Piece, action.Piece))
+                        moveFrom = -1; // fallback switched piece; unknown prior square
                     AiPlanMemory.RecordMove(player, action.Piece, moveFrom, action.Coordinate);
+                }
 
                 if (PieceFeedbackManager.Instance != null)
                     yield return PieceFeedbackManager.Instance.WaitForAnimations();
@@ -318,28 +323,61 @@ namespace PaiSho.Game
 
         public static bool Execute(GameAction action)
         {
-            if (TileSelector.Instance == null)
+            return ActionApplicator.TryApply(action);
+        }
+
+        /// <summary>
+        /// Prefer the scored pick; if execute fails (stale legality / presentation), try other legal actions
+        /// before giving up and passing.
+        /// </summary>
+        public static bool TryExecuteWithFallback(ref GameAction action, List<GameAction> candidates, Player player)
+        {
+            if (TryApplyLogged(action))
+                return true;
+
+            if (candidates == null || candidates.Count == 0)
                 return false;
 
-            switch (action.Kind)
+            var ranked = new List<GameAction>(candidates);
+            ranked.Sort((a, b) => AiScorer.ScoreAction(b, player).CompareTo(AiScorer.ScoreAction(a, player)));
+
+            int attempts = 0;
+            foreach (GameAction alt in ranked)
             {
-                case GameActionKind.Move:
-                    return TileSelector.Instance.TryMoveTile(action.Piece, action.Coordinate);
-                case GameActionKind.Place:
-                    return TileSelector.Instance.TryPlaceTile(action.Player, action.PlaceType, action.Coordinate);
-                case GameActionKind.Revive:
-                    return TileSelector.Instance.TryMomentumRevive(action.Player, action.Piece);
-                case GameActionKind.Freeze:
-                    return TileSelector.Instance.TryMomentumFreeze(action.Player, action.Piece);
-                case GameActionKind.BoatLoad:
-                    return TileSelector.Instance.TryBoatLoad(action.Player, action.Piece, action.Coordinate);
-                case GameActionKind.BoatUnload:
-                    return TileSelector.Instance.TryBoatUnload(action.Player, action.Piece, action.Coordinate);
-                case GameActionKind.WheelRotate:
-                    return TileSelector.Instance.TryRotateWheel(action.Player, action.Piece);
-                default:
-                    return false;
+                if (ActionEquals(alt, action))
+                    continue;
+
+                attempts++;
+                if (attempts > 8)
+                    break;
+
+                if (!TryApplyLogged(alt))
+                    continue;
+
+                DebugLogger.LogWarning($"AI fallback executed after preferred action failed: {alt}");
+                action = alt;
+                return true;
             }
+
+            return false;
+        }
+
+        private static bool TryApplyLogged(GameAction action)
+        {
+            if (ActionApplicator.TryApply(action))
+                return true;
+
+            DebugLogger.LogWarning($"AI action rejected by applicator: {action}");
+            return false;
+        }
+
+        private static bool ActionEquals(GameAction a, GameAction b)
+        {
+            return a.Kind == b.Kind
+                && a.Player == b.Player
+                && a.Coordinate == b.Coordinate
+                && a.PlaceType == b.PlaceType
+                && ReferenceEquals(a.Piece, b.Piece);
         }
     }
 }
