@@ -1,4 +1,5 @@
 using UnityEngine;
+using PaiSho.Board;
 using PaiSho.Pieces;
 
 public class Tile : MonoBehaviour
@@ -31,16 +32,20 @@ public class Tile : MonoBehaviour
         return occupyingPiece;
     }
 
-    private int coordinate;
-
+    /// <summary>
+    /// Kept for callers that still set an explicit coordinate. The authoritative
+    /// value always comes from the grid position via <see cref="GetCoordinate"/>.
+    /// </summary>
     public void SetCoordinate(int coord)
     {
-        coordinate = coord;
+        Vector2Int grid = BoardUtils.FromCoordinate(coord);
+        x = grid.x;
+        z = grid.y;
     }
 
     public int GetCoordinate()
     {
-        return coordinate;
+        return BoardUtils.ToCoordinate(x, z);
     }
 
     public bool HasPiece()
@@ -50,7 +55,7 @@ public class Tile : MonoBehaviour
 
     public void EnableHighlight()
     {
-        if (highlightVisual != null && !IsDecorative) // Prevent highlighting decorations
+        if (highlightVisual != null && !IsDecorative)
             highlightVisual.SetActive(true);
     }
 

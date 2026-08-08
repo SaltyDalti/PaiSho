@@ -37,7 +37,7 @@ namespace PaiSho.Game
             else
                 Debug.Log("The game ends in a draw!");
 
-            // Optional: Trigger end screen or transition back to main menu
+            GameSummaryManager.Instance?.GenerateSummary();
         }
     }
 }

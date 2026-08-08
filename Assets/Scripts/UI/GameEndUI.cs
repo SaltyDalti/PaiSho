@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 namespace PaiSho.Game
 {
@@ -9,7 +10,7 @@ namespace PaiSho.Game
 
         [Header("End Game UI Elements")]
         public GameObject endGamePanel;
-        public Text victoryText;
+        public TMP_Text victoryText;
         public Button restartButton;
 
         private void Awake()
@@ -19,25 +20,32 @@ namespace PaiSho.Game
             else
                 Instance = this;
 
-            endGamePanel.SetActive(false); // Hide by default
+            if (endGamePanel != null)
+                endGamePanel.SetActive(false);
         }
 
         public void ShowVictory(Player winner)
         {
-            endGamePanel.SetActive(true);
+            if (endGamePanel != null)
+                endGamePanel.SetActive(true);
 
-            if (winner == Player.Host)
-                victoryText.text = "HOST WINS!";
+            if (victoryText != null)
+            {
+                victoryText.text = winner == Player.Host ? "HOST WINS!" : "OPPONENT WINS!";
+            }
             else
-                victoryText.text = "OPPONENT WINS!";
+            {
+                Debug.LogError("[GameEndUI] victoryText is not assigned.");
+            }
 
-            Time.timeScale = 0f; // Pause the game
+            Time.timeScale = 0f;
         }
 
         public void RestartGame()
         {
-            Time.timeScale = 1f; // Unpause
-            UnityEngine.SceneManagement.SceneManager.LoadScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex);
+            Time.timeScale = 1f;
+            UnityEngine.SceneManagement.SceneManager.LoadScene(
+                UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex);
         }
     }
 }

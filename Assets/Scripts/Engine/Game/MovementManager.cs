@@ -39,12 +39,14 @@ namespace PaiSho.Game
                 return legalMoves;
 
             int currentCoord = piece.GetPosition();
+            // GetModifiedMovementRange returns 1 normally, 2 in-season for spring flowers (+1 bonus).
+            int seasonalBonus = Mathf.Max(0, piece.GetModifiedMovementRange() - 1);
 
             switch (piece.Type)
             {
                 case PieceType.Jasmine:
                 case PieceType.Rose:
-                    legalMoves.AddRange(GetStraightLineMoves(currentCoord, 3));
+                    legalMoves.AddRange(GetStraightLineMoves(currentCoord, 3 + seasonalBonus));
                     break;
 
                 case PieceType.Lily:
@@ -54,15 +56,15 @@ namespace PaiSho.Game
 
                 case PieceType.Jade:
                 case PieceType.Rhododendron:
-                    legalMoves.AddRange(GetStraightAndDiagonalMoves(currentCoord, 5));
+                    legalMoves.AddRange(GetStraightAndDiagonalMoves(currentCoord, 5 + seasonalBonus));
                     break;
 
                 case PieceType.Lotus:
-                    legalMoves.AddRange(GetStraightAndDiagonalMoves(currentCoord, 2));
+                    legalMoves.AddRange(GetStraightAndDiagonalMoves(currentCoord, 2 + seasonalBonus));
                     break;
 
                 case PieceType.Orchid:
-                    legalMoves.AddRange(GetStraightLineMoves(currentCoord, 6, canJump: true));
+                    legalMoves.AddRange(GetStraightLineMoves(currentCoord, 6 + seasonalBonus, canJump: true));
                     break;
 
                 case PieceType.Rock:
