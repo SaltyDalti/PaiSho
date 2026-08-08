@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using PaiSho.Pieces;
 using PaiSho.Board;
+using PaiSho.Domain;
 
 namespace PaiSho.Game
 {
@@ -19,29 +20,22 @@ namespace PaiSho.Game
 
         /// <summary>
         /// Checks adjacent pieces around the placed or moved piece, and captures enemy pieces in disharmony.
-        /// Merges former PieceCaptureManager behavior (season immunity + pot recording).
+        /// Targeting legality is Domain <see cref="CaptureRules"/>; pot/remove stay here.
         /// </summary>
         public void CheckForCaptures(Piece placedPiece)
         {
-            if (placedPiece == null)
+            if (placedPiece == null || BoardManager.Instance == null)
                 return;
 
-            List<int> neighbors = BoardManager.Instance.GetAdjacentCoordinates(placedPiece.GetPosition());
+            BoardPiece attacker = ToBoardPiece(placedPiece);
+            List<BoardPiece> snapshot = SnapshotBoard();
+            GardenSeason season = SeasonMapping.Current();
 
-            foreach (int coord in neighbors)
+            foreach (CaptureOpportunity opportunity in CaptureRules.FindCaptureTargets(attacker, snapshot, season))
             {
-                Piece neighbor = BoardManager.Instance.GetPieceAt(coord);
-
-                if (neighbor == null)
-                    continue;
-
-                if (neighbor.Owner == placedPiece.Owner)
-                    continue;
-
-                if (!HarmonyManager.Instance.IsDisharmony(placedPiece, neighbor))
-                    continue;
-
-                TryCapture(placedPiece, neighbor);
+                Piece neighbor = BoardManager.Instance.GetPieceAt(opportunity.Target.Coordinate);
+                if (neighbor != null)
+                    TryCapture(placedPiece, neighbor);
             }
         }
 
@@ -50,11 +44,19 @@ namespace PaiSho.Game
             if (attacker == null || target == null)
                 return false;
 
-            if (!target.CanBeCaptured())
+            CaptureDenyReason reason = CaptureRules.EvaluatePair(
+                ToBoardPiece(attacker),
+                ToBoardPiece(target),
+                SeasonMapping.Current());
+
+            if (reason == CaptureDenyReason.SeasonImmune)
             {
-                Debug.Log($">>> {target.Type} is immune to capture during {SeasonManager.Instance.GetCurrentSeason()}.");
+                Debug.Log($">>> {target.Type} is immune to capture during {SeasonMapping.Current()}.");
                 return false;
             }
+
+            if (reason != CaptureDenyReason.None)
+                return false;
 
             int targetCoord = target.GetPosition();
             Vector2Int grid = BoardUtils.FromCoordinate(targetCoord);
@@ -67,6 +69,29 @@ namespace PaiSho.Game
             DebugLogger.Log($">>> {attacker.Type} captured {target.Type} from {target.Owner} at {targetCoord}.");
             BoardManager.Instance.RemovePiece(target);
             return true;
+        }
+
+        private static BoardPiece ToBoardPiece(Piece piece)
+        {
+            return new BoardPiece(
+                PlacementValidator.ToSeat(piece.Owner),
+                piece.Type,
+                piece.GetPosition(),
+                piece.IsGhost,
+                piece.IsBlooming());
+        }
+
+        private static List<BoardPiece> SnapshotBoard()
+        {
+            List<Piece> all = BoardManager.Instance.GetAllPieces();
+            var snapshot = new List<BoardPiece>(all.Count);
+            foreach (Piece piece in all)
+            {
+                if (piece == null)
+                    continue;
+                snapshot.Add(ToBoardPiece(piece));
+            }
+            return snapshot;
         }
     }
 }

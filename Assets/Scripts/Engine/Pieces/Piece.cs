@@ -88,28 +88,15 @@ namespace PaiSho.Pieces
             return 1;
         }
 
-        public bool CanBeCaptured()
-        {
-            Season current = SeasonManager.Instance.GetCurrentSeason();
-
-            if (current == Season.Summer && (Type == PieceType.Boat || Type == PieceType.Knotweed))
-                return false;
-            return true;
-        }
+        public bool CanBeCaptured() =>
+            CaptureRules.CanBeCaptured(Type, SeasonMapping.Current());
 
         public bool CanFormHarmony() => PieceTraits.CanFormHarmony(Type);
 
         public bool CanFormDisharmony() => PieceTraits.CanFormHarmony(Type);
 
-        public bool CanBeDisharmonized()
-        {
-            Season current = SeasonManager.Instance.GetCurrentSeason();
-
-            if (current == Season.Autumn &&
-                (Type == PieceType.Rose || Type == PieceType.Chrysanthemum || Type == PieceType.Rhododendron))
-                return false;
-            return true;
-        }
+        public bool CanBeDisharmonized() =>
+            CaptureRules.CanBeDisharmonized(Type, SeasonMapping.Current());
 
         public bool CanHarmonizeWith(Piece other)
         {
