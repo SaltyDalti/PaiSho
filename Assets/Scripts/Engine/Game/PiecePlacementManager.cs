@@ -106,28 +106,29 @@ namespace PaiSho.Game
                 return;
             }
 
-            GameObject prefab = GetPrefabForType(typeToPlace);
-            if (prefab == null)
-            {
-                Debug.LogError($"Prefab for {typeToPlace} is not assigned!");
-                return;
-            }
-
             Vector3 spawnPosition = tile.transform.position + Vector3.up * 0.1f;
-            GameObject pieceObj = Instantiate(prefab, spawnPosition, Quaternion.identity);
+            GameObject prefab = GetPrefabForType(typeToPlace);
+            GameObject pieceObj;
+
+            if (prefab != null)
+            {
+                pieceObj = Instantiate(prefab, spawnPosition, Quaternion.identity);
+            }
+            else
+            {
+                Debug.LogWarning($"[PiecePlacementManager] Prefab missing for {typeToPlace}; spawning procedural placeholder.");
+                pieceObj = CreateProceduralPiece(typeToPlace, spawnPosition);
+            }
 
             if (pieceObj == null)
             {
-                Debug.LogError("Failed to instantiate piece prefab!");
+                Debug.LogError("Failed to instantiate piece!");
                 return;
             }
 
             Piece piece = pieceObj.GetComponent<Piece>();
             if (piece == null)
-            {
-                Debug.LogError("Instantiated object missing Piece.cs script!");
-                return;
-            }
+                piece = pieceObj.AddComponent<Piece>();
 
             piece.Initialize(player, typeToPlace);
             ApplyOwnershipMaterials(piece, player);
@@ -216,8 +217,46 @@ namespace PaiSho.Game
             var loaded = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(path);
             if (loaded != null)
                 return loaded;
+
+            Debug.LogWarning($"[PiecePlacementManager] AssetDatabase could not load {path}");
 #endif
             return Resources.Load<GameObject>($"Pieces/{assetName}");
+        }
+
+        /// <summary>
+        /// Nested Blender prefabs are unreliable in this project (Missing refs).
+        /// Procedural pieces keep the rules loop playable with a visible marker.
+        /// </summary>
+        private static GameObject CreateProceduralPiece(PieceType type, Vector3 position)
+        {
+            GameObject root = new GameObject($"Proc_{type}");
+            root.transform.position = position;
+
+            GameObject tile = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            tile.name = "Tile";
+            tile.transform.SetParent(root.transform, false);
+            tile.transform.localScale = new Vector3(1.1f, 0.12f, 1.1f);
+            Object.Destroy(tile.GetComponent<Collider>());
+
+            GameObject face = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            face.name = "Face";
+            face.transform.SetParent(root.transform, false);
+            face.transform.localPosition = new Vector3(0f, 0.2f, 0f);
+            face.transform.localScale = new Vector3(0.55f, 0.08f, 0.55f);
+            Object.Destroy(face.GetComponent<Collider>());
+
+            if (MaterialManager.Instance != null)
+            {
+                var tileMr = tile.GetComponent<MeshRenderer>();
+                var faceMr = face.GetComponent<MeshRenderer>();
+                if (tileMr != null && MaterialManager.Instance.TileBaseMaterial != null)
+                    tileMr.sharedMaterial = MaterialManager.Instance.TileBaseMaterial;
+                if (faceMr != null && MaterialManager.Instance.HostEngravingMaterial != null)
+                    faceMr.sharedMaterial = MaterialManager.Instance.HostEngravingMaterial;
+            }
+
+            root.AddComponent<Piece>();
+            return root;
         }
 
         private void ApplyOwnershipMaterials(Piece piece, Player owner)

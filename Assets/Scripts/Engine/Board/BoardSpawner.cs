@@ -16,6 +16,18 @@ namespace PaiSho.Game
 
         private void SpawnBoardTiles()
         {
+            if (boardParent == null)
+            {
+                boardParent = new GameObject("BoardTiles").transform;
+                Debug.LogWarning("[BoardSpawner] boardParent was missing; created BoardTiles root.");
+            }
+
+            if (tilePrefab == null)
+            {
+                Debug.LogError("[BoardSpawner] tilePrefab is not assigned — cannot spawn board.");
+                return;
+            }
+
             for (int x = -10; x <= 10; x++) // 20 columns
             {
                 for (int z = -10; z <= 10; z++) // 20 rows
