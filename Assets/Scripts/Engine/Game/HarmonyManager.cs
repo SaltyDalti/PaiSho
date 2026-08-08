@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using PaiSho.Pieces;
 using PaiSho.Board;
+using PaiSho.Domain;
 
 namespace PaiSho.Game
 {
@@ -25,15 +26,15 @@ namespace PaiSho.Game
             if (a == null || b == null)
                 return false;
 
-            if (a.Owner != b.Owner)
-                return false;
-
-            if (!a.CanHarmonizeWith(b))
-                return false;
-
-            // Chebyshev distance: 1 means orthogonally or diagonally adjacent.
-            int distance = GetDistance(a.GetPosition(), b.GetPosition());
-            return distance == 1;
+            return HarmonyRules.IsHarmony(
+                PlacementValidator.ToSeat(a.Owner),
+                PlacementValidator.ToSeat(b.Owner),
+                a.Type,
+                b.Type,
+                a.GetPosition(),
+                b.GetPosition(),
+                a.IsBlooming(),
+                b.IsBlooming());
         }
 
         /// <summary>
@@ -44,10 +45,13 @@ namespace PaiSho.Game
             if (a == null || b == null)
                 return false;
 
-            if (a.Owner == b.Owner)
-                return false;
-
-            return !a.CanHarmonizeWith(b);
+            return HarmonyRules.IsDisharmony(
+                PlacementValidator.ToSeat(a.Owner),
+                PlacementValidator.ToSeat(b.Owner),
+                a.Type,
+                b.Type,
+                a.IsBlooming(),
+                b.IsBlooming());
         }
 
         /// <summary>
@@ -84,17 +88,9 @@ namespace PaiSho.Game
         }
 
         /// <summary>
-        /// Distance helper between two coordinates.
+        /// Distance helper between two coordinates (Chebyshev).
         /// </summary>
-        private int GetDistance(int coordA, int coordB)
-        {
-            Vector2Int a = BoardUtils.FromCoordinate(coordA);
-            Vector2Int b = BoardUtils.FromCoordinate(coordB);
-
-            int dx = Mathf.Abs(a.x - b.x);
-            int dz = Mathf.Abs(a.y - b.y);
-
-            return Mathf.Max(dx, dz);
-        }
+        public int GetDistance(int coordA, int coordB) =>
+            HarmonyRules.ChebyshevDistance(coordA, coordB);
     }
 }

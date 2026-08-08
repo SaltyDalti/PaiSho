@@ -1,5 +1,6 @@
 using UnityEngine;
 using PaiSho.Game;
+using PaiSho.Domain;
 using System.Collections.Generic;
 
 namespace PaiSho.Pieces
@@ -46,18 +47,9 @@ namespace PaiSho.Pieces
         }
 
         // --- Behavior Flags ---
-        public bool IsFlower()
-        {
-            return Type == PieceType.Jasmine || Type == PieceType.Lily || Type == PieceType.Jade ||
-                   Type == PieceType.Rose || Type == PieceType.Rhododendron || Type == PieceType.Chrysanthemum ||
-                   Type == PieceType.Lotus || Type == PieceType.Orchid;
-        }
+        public bool IsFlower() => PieceTraits.IsFlower(Type);
 
-        public bool IsNonFlower()
-        {
-            return Type == PieceType.Boat || Type == PieceType.Rock ||
-                   Type == PieceType.Knotweed || Type == PieceType.Wheel;
-        }
+        public bool IsNonFlower() => PieceTraits.IsAccent(Type);
 
         public bool IsSpecial()
         {
@@ -74,10 +66,7 @@ namespace PaiSho.Pieces
             return Type == PieceType.Wheel;
         }
 
-        public bool BlocksHarmony()
-        {
-            return Type == PieceType.Knotweed;
-        }
+        public bool BlocksHarmony() => PieceTraits.BlocksHarmony(Type);
 
         public bool IsImmovable()
         {
@@ -90,75 +79,35 @@ namespace PaiSho.Pieces
         }
 
         // --- Gameplay Logic ---
-        public int GetModifiedMovementRange()
-        {
-            Season current = SeasonManager.Instance.GetCurrentSeason();
+        public int GetModifiedMovementRange() =>
+            SeasonRules.ModifiedMovementRange(Type, SeasonMapping.Current());
 
-            if (current == Season.Spring && (Type == PieceType.Jasmine || Type == PieceType.Lily || Type == PieceType.Jade))
-                return 2; // +1 movement during spring
-            return 1;
-        }
+        public bool CanBeCaptured() =>
+            CaptureRules.CanBeCaptured(Type, SeasonMapping.Current());
 
-        public bool CanBeCaptured()
-        {
-            Season current = SeasonManager.Instance.GetCurrentSeason();
+        public bool CanFormHarmony() => PieceTraits.CanFormHarmony(Type);
 
-            if (current == Season.Summer && (Type == PieceType.Boat || Type == PieceType.Knotweed))
-                return false;
-            return true;
-        }
+        public bool CanFormDisharmony() => PieceTraits.CanFormHarmony(Type);
 
-        public bool CanFormHarmony()
-        {
-            return Type != PieceType.Orchid;
-        }
-
-        public bool CanFormDisharmony()
-        {
-            return Type != PieceType.Orchid;
-        }
-
-        public bool CanBeDisharmonized()
-        {
-            Season current = SeasonManager.Instance.GetCurrentSeason();
-
-            if (current == Season.Autumn &&
-                (Type == PieceType.Rose || Type == PieceType.Chrysanthemum || Type == PieceType.Rhododendron))
-                return false;
-            return true;
-        }
+        public bool CanBeDisharmonized() =>
+            CaptureRules.CanBeDisharmonized(Type, SeasonMapping.Current());
 
         public bool CanHarmonizeWith(Piece other)
         {
-            if (Type == PieceType.Lotus && IsBlooming() && other.IsFlower())
-                return true;
-            if (other.Type == PieceType.Lotus && other.IsBlooming() && IsFlower())
-                return true;
+            if (other == null)
+                return false;
 
-            return Type == other.Type && IsFlower() && other.IsFlower();
+            return HarmonyRules.CanHarmonizeTypes(
+                Type,
+                other.Type,
+                IsBlooming(),
+                other.IsBlooming());
         }
 
-        public int GetScoreValue()
-        {
-            Season current = SeasonManager.Instance.GetCurrentSeason();
+        public int GetScoreValue() =>
+            SeasonRules.BaseScoreValue(Type, SeasonMapping.Current(), PointValue);
 
-            if (current == Season.Winter && (Type == PieceType.Rock || Type == PieceType.Wheel || Type == PieceType.Lotus))
-                return PointValue + 1;
-
-            return PointValue;
-        }
-
-        public static bool IsFlowerType(PieceType type)
-        {
-            return type == PieceType.Jasmine ||
-                   type == PieceType.Lily ||
-                   type == PieceType.Jade ||
-                   type == PieceType.Rose ||
-                   type == PieceType.Rhododendron ||
-                   type == PieceType.Chrysanthemum ||
-                   type == PieceType.Lotus ||
-                   type == PieceType.Orchid;
-        }
+        public static bool IsFlowerType(PieceType type) => PieceTraits.IsFlower(type);
 
 
 

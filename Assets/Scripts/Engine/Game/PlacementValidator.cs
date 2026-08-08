@@ -1,17 +1,62 @@
 using PaiSho.Board;
 using PaiSho.Pieces;
+using PaiSho.Domain;
 
 namespace PaiSho.Game
 {
     public static class PlacementValidator
     {
+        public static Seat ToSeat(Player player) =>
+            player == Player.Host ? Seat.Host : Seat.Opponent;
+
+        public static MatchPhase CurrentPhase()
+        {
+            if (GameManager.Instance != null && GameManager.Instance.IsSpringPhase())
+                return MatchPhase.Spring;
+            return MatchPhase.Play;
+        }
+
         /// <summary>
-        /// Check if a placement coordinate is legal for a new piece.
+        /// Check if a placement coordinate is legal for a new piece (empty legal garden point).
         /// </summary>
         public static bool CanPlace(Player player, PieceType type, int coordinate)
         {
-            return BoardManager.Instance.IsLegalPosition(coordinate) &&
-                   !BoardManager.Instance.IsOccupied(coordinate);
+            bool hasReserve = true;
+            if (GameManager.Instance != null && !GameManager.Instance.IsSpringPhase()
+                && ReserveManager.Instance != null)
+            {
+                hasReserve = ReserveManager.Instance.HasPieceAvailable(player, type);
+            }
+
+            PlacementResult result = PlacementRules.Evaluate(
+                new PlacementIntent(
+                    CurrentPhase(),
+                    ToSeat(player),
+                    type,
+                    coordinate,
+                    hasReserve),
+                coord => BoardManager.Instance != null && BoardManager.Instance.IsOccupied(coord));
+
+            return result.IsAllowed;
+        }
+
+        /// <summary>
+        /// Full Domain evaluation with reason — preferred for placement managers.
+        /// </summary>
+        public static PlacementResult Evaluate(
+            Player player,
+            PieceType type,
+            int coordinate,
+            bool hasReserveAvailable)
+        {
+            return PlacementRules.Evaluate(
+                new PlacementIntent(
+                    CurrentPhase(),
+                    ToSeat(player),
+                    type,
+                    coordinate,
+                    hasReserveAvailable),
+                coord => BoardManager.Instance != null && BoardManager.Instance.IsOccupied(coord));
         }
 
         /// <summary>
@@ -20,10 +65,7 @@ namespace PaiSho.Game
         /// </summary>
         public static bool IsOnOpponentSide(int coordinate, Player player)
         {
-            int row = coordinate / BoardUtils.CoordStride; // 0..18 for z -9..9
-            if (player == Player.Host)
-                return row > 9; // Opponent half (positive Z)
-            return row < 9; // Host half (negative Z)
+            return PlacementRules.IsOnOpponentSide(coordinate, ToSeat(player));
         }
 
         /// <summary>
@@ -31,8 +73,9 @@ namespace PaiSho.Game
         /// </summary>
         public static bool IsValidPlacement(int coordinate)
         {
-            return BoardManager.Instance.IsLegalPosition(coordinate) &&
-                   !BoardManager.Instance.IsOccupied(coordinate);
+            return PlacementRules.IsEmptyLegalPoint(
+                coordinate,
+                coord => BoardManager.Instance != null && BoardManager.Instance.IsOccupied(coord));
         }
     }
 }

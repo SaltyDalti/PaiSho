@@ -1,6 +1,7 @@
 using UnityEngine;
 using PaiSho.Pieces;
 using PaiSho.Board;
+using PaiSho.Domain;
 
 namespace PaiSho.Game
 {
@@ -105,9 +106,18 @@ namespace PaiSho.Game
             int z = tile.GetGridPosition().y;
             int coordinate = BoardUtils.ToCoordinate(x, z);
 
-            if (!PlacementValidator.CanPlace(player, typeToPlace, coordinate))
+            bool isSpring = GameManager.Instance.IsSpringPhase();
+            bool hasReserve = isSpring
+                || (ReserveManager.Instance != null
+                    && ReserveManager.Instance.HasPieceAvailable(player, typeToPlace));
+
+            PlacementResult decision = PlacementValidator.Evaluate(
+                player, typeToPlace, coordinate, hasReserve);
+            if (!decision.IsAllowed)
             {
-                Debug.LogWarning($"Illegal placement for {typeToPlace} at {tile.GetGridPosition()} (coord {coordinate}).");
+                Debug.LogWarning(
+                    $"Illegal placement for {typeToPlace} at {tile.GetGridPosition()} " +
+                    $"(coord {coordinate}): {decision.Reason}.");
                 return;
             }
 

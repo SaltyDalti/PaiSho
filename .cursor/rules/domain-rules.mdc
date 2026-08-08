@@ -1,0 +1,13 @@
+---
+description: Pure rules engine invariants and testing requirements
+globs: Assets/Scripts/Engine/Domain/**/*.cs,tests/**/*.cs
+alwaysApply: false
+---
+
+# Domain rules
+
+- No `UnityEngine` references in Domain.
+- Board coordinates: garden x,z in [-9, 9]; legal points are Manhattan distance ≤ 12 from center; encode with stride 20 via `BoardCoords.ToCoordinate`.
+- Movement APIs take an occupancy predicate (`Func<int, bool>` or board snapshot) — never `BoardManager.Instance`.
+- Every behavior change in Domain must update or add a test under `tests/PaiSho.Rules.Tests`.
+- Keep piece movement tables data-driven where practical; avoid duplicating direction arrays across files.

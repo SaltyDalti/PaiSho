@@ -1,0 +1,31 @@
+# Unity generated / bulky (keep Agent indexing focused)
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+Logs/
+UserSettings/
+MemoryCaptures/
+**/StreamingAssets/**
+
+# Large / binary-heavy assets (Agent can still open via explicit @ if needed)
+*.blend
+*.blend1
+*.psd
+*.fbx
+*.tif
+*.tiff
+*.exr
+*.mp4
+*.wav
+*.aiff
+
+# Packages cache noise
+Packages/packages-lock.json
+
+# Misc
+*.vsix
+UpgradeLog.htm
+Assets/Scripts.zip
+Assets/TextMesh Pro/

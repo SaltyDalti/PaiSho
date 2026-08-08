@@ -1,6 +1,7 @@
 using UnityEngine;
 using PaiSho.Pieces;
 using PaiSho.Board;
+using PaiSho.Domain;
 
 namespace PaiSho.Game
 {
@@ -22,17 +23,35 @@ namespace PaiSho.Game
 
         /// <summary>
         /// Called when the player clicks a tile during Spring Opening.
+        /// Prefers <see cref="PiecePlacementManager"/> when present; otherwise validates via Domain.
         /// </summary>
         public void TryPlaceOpeningFlower(Tile tile)
         {
             if (!GameManager.Instance.IsSpringPhase())
                 return;
 
-            if (tile.HasPiece())
+            if (tile == null || tile.HasPiece())
                 return;
+
+            // Primary path already handles spring via PiecePlacementManager + PlacementRules.
+            if (PiecePlacementManager.Instance != null)
+            {
+                PiecePlacementManager.Instance.TryPlacePiece(tile);
+                return;
+            }
 
             Player player = GameManager.Instance.GetCurrentPlayer();
             PieceType flowerType = GameManager.Instance.GetOpeningFlower(player);
+            Vector2Int gridPos = tile.GetGridPosition();
+            int coordinate = BoardUtils.ToCoordinate(gridPos.x, gridPos.y);
+
+            PlacementResult decision = PlacementValidator.Evaluate(
+                player, flowerType, coordinate, hasReserveAvailable: true);
+            if (!decision.IsAllowed)
+            {
+                Debug.LogWarning($"Illegal spring placement at {gridPos}: {decision.Reason}");
+                return;
+            }
 
             GameObject prefabToPlace = (flowerType == PieceType.Jasmine) ? jasminePrefab : rosePrefab;
 
@@ -42,7 +61,7 @@ namespace PaiSho.Game
                 return;
             }
 
-            Vector3 spawnPosition = tile.transform.position + Vector3.up * 0.1f; // Slightly above tile
+            Vector3 spawnPosition = tile.transform.position + Vector3.up * 0.1f;
             GameObject pieceObj = Instantiate(prefabToPlace, spawnPosition, Quaternion.identity);
 
             Piece piece = pieceObj.GetComponent<Piece>();
@@ -52,17 +71,8 @@ namespace PaiSho.Game
                 return;
             }
 
-
-
             piece.Initialize(player, flowerType);
             ApplyOwnershipMaterials(piece, player);
-
-            Vector2Int gridPos = tile.GetGridPosition();
-            int coordinate = BoardUtils.ToCoordinate(gridPos.x, gridPos.y);
-
-            Debug.Log($"Placing piece: {piece}");
-            Debug.Log($"BoardManager Instance: {BoardManager.Instance}");
-            Debug.Log($"Coordinate: {coordinate}");
 
             BoardManager.Instance.PlacePiece(piece, coordinate);
             tile.SetPiece(piece);

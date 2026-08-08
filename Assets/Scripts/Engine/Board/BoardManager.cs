@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using PaiSho.Pieces;
 using PaiSho.Game;
+using PaiSho.Domain;
 
 namespace PaiSho.Board
 {
@@ -108,20 +109,8 @@ namespace PaiSho.Board
             return piecesByCoordinate.ContainsKey(coordinate);
         }
 
-        public List<int> GetAdjacentCoordinates(int coordinate)
-        {
-            List<int> adjacentCoords = new List<int>();
-            int[] offsets = { -20, 20, -1, 1 }; // Ensure these offsets match your actual board grid layout
-
-            foreach (var offset in offsets)
-            {
-                int adjacent = coordinate + offset;
-                if (BoardUtils.IsValidPointCoordinate(adjacent))
-                    adjacentCoords.Add(adjacent);
-            }
-
-            return adjacentCoords;
-        }
+        public List<int> GetAdjacentCoordinates(int coordinate) =>
+            BoardCoords.GetOrthogonalNeighbors(coordinate);
 
         private Dictionary<Vector2Int, Tile> tilesByCoordinate = new Dictionary<Vector2Int, Tile>();
 
