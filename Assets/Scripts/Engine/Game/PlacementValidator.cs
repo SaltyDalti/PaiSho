@@ -10,26 +10,24 @@ namespace PaiSho.Game
         /// </summary>
         public static bool CanPlace(Player player, PieceType type, int coordinate)
         {
-            // Tile must be placed on an unoccupied, legal position
             return BoardManager.Instance.IsLegalPosition(coordinate) &&
                    !BoardManager.Instance.IsOccupied(coordinate);
         }
 
         /// <summary>
         /// Check if a coordinate is on the opponent's side of the board.
+        /// Host plays from negative Z (lower rows); Opponent from positive Z.
         /// </summary>
         public static bool IsOnOpponentSide(int coordinate, Player player)
         {
-            // Assume board is 19 rows (0-360 approx), Host = bottom half, Opponent = top half
-            int row = coordinate / 19;
+            int row = coordinate / BoardUtils.CoordStride; // 0..18 for z -9..9
             if (player == Player.Host)
-                return row < 9; // Rows 0-8
-            else
-                return row > 9; // Rows 10-18
+                return row > 9; // Opponent half (positive Z)
+            return row < 9; // Host half (negative Z)
         }
 
         /// <summary>
-        /// Basic validation if the coordinate is usable at all (optional extra check).
+        /// Basic validation if the coordinate is usable at all.
         /// </summary>
         public static bool IsValidPlacement(int coordinate)
         {

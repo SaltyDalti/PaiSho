@@ -29,15 +29,15 @@ namespace PaiSho.Game
                     if (tile != null)
                     {
                         tile.SetGridPosition(x, z);
+                        int coord = BoardUtils.ToCoordinate(x, z);
+                        tile.SetCoordinate(coord);
                         BoardManager.Instance.RegisterTile(x, z, tile);
 
                         // Mark as decorative (non-playable) if outside legal garden
-                        int coord = BoardUtils.ToCoordinate(x, z);
                         if (!BoardUtils.LegalPoints.Contains(coord))
                         {
-                            tile.MarkAsDecorative(); // safe public method
+                            tile.MarkAsDecorative();
                         }
-
                     }
                     else
                     {

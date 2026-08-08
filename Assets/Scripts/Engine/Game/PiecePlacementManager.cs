@@ -67,6 +67,12 @@ namespace PaiSho.Game
                 return;
             }
 
+            if (tile.IsDecorative)
+            {
+                Debug.Log("Cannot place on a decorative tile.");
+                return;
+            }
+
             if (tile.HasPiece())
             {
                 Debug.Log("Tile already occupied.");
@@ -88,6 +94,16 @@ namespace PaiSho.Game
                     return;
                 }
                 typeToPlace = selectedPieceType.Value;
+            }
+
+            int x = tile.GetGridPosition().x;
+            int z = tile.GetGridPosition().y;
+            int coordinate = BoardUtils.ToCoordinate(x, z);
+
+            if (!PlacementValidator.CanPlace(player, typeToPlace, coordinate))
+            {
+                Debug.LogWarning($"Illegal placement for {typeToPlace} at {tile.GetGridPosition()} (coord {coordinate}).");
+                return;
             }
 
             GameObject prefab = GetPrefabForType(typeToPlace);
@@ -115,10 +131,6 @@ namespace PaiSho.Game
 
             piece.Initialize(player, typeToPlace);
             ApplyOwnershipMaterials(piece, player);
-
-            int x = tile.GetGridPosition().x;
-            int z = tile.GetGridPosition().y;
-            int coordinate = BoardUtils.ToCoordinate(x, z);
 
             BoardManager.Instance.PlacePiece(piece, coordinate);
             tile.SetPiece(piece);
@@ -171,21 +183,9 @@ namespace PaiSho.Game
 
         private void ApplyOwnershipMaterials(Piece piece, Player owner)
         {
-            Transform basePart = piece.transform.Find("Tile");
-            Transform inlayPart = piece.transform.Find("Face");
-
-            if (basePart == null || inlayPart == null)
+            if (!TryResolvePieceRenderers(piece.transform, out MeshRenderer baseRenderer, out MeshRenderer inlayRenderer))
             {
-                Debug.LogError("[PiecePlacementManager] ERROR: 'Tile' or 'Face' child not found on Piece prefab!");
-                return;
-            }
-
-            MeshRenderer baseRenderer = basePart.GetComponent<MeshRenderer>();
-            MeshRenderer inlayRenderer = inlayPart.GetComponent<MeshRenderer>();
-
-            if (baseRenderer == null || inlayRenderer == null)
-            {
-                Debug.LogError("[PiecePlacementManager] ERROR: MeshRenderer missing on Tile or Face!");
+                Debug.LogWarning($"[PiecePlacementManager] Could not resolve Tile/Face renderers on {piece.name}; keeping prefab materials.");
                 return;
             }
 
@@ -196,22 +196,49 @@ namespace PaiSho.Game
             }
 
             OwnerType ownerType = owner == Player.Host ? OwnerType.Host : OwnerType.Opponent;
-
-            // Debug logging
-            Debug.Log($"[ApplyOwnershipMaterials] Assigning materials for {ownerType}");
-
-            // Force assign .material instead of sharedMaterial
             Material baseMat = MaterialManager.Instance.TileBaseMaterial;
             Material inlayMat = MaterialManager.Instance.GetEngravingMaterial(ownerType);
 
-            if (baseMat == null)
-                Debug.LogError("[PiecePlacementManager] ERROR: TileBaseMaterial is NULL!");
-
-            if (inlayMat == null)
-                Debug.LogError("[PiecePlacementManager] ERROR: EngravingMaterial is NULL!");
+            if (baseMat == null || inlayMat == null)
+            {
+                Debug.LogError("[PiecePlacementManager] Ownership materials are not assigned on MaterialManager.");
+                return;
+            }
 
             baseRenderer.material = baseMat;
             inlayRenderer.material = inlayMat;
+        }
+
+        /// <summary>
+        /// Blender exports use child names like "Tile" + "Jasmine Face". Accept exact
+        /// "Tile"/"Face" or any child whose name contains "Face".
+        /// </summary>
+        private static bool TryResolvePieceRenderers(Transform root, out MeshRenderer baseRenderer, out MeshRenderer inlayRenderer)
+        {
+            baseRenderer = null;
+            inlayRenderer = null;
+
+            Transform basePart = root.Find("Tile");
+            Transform inlayPart = root.Find("Face");
+
+            if (basePart == null || inlayPart == null)
+            {
+                foreach (Transform child in root)
+                {
+                    string name = child.name;
+                    if (basePart == null && name == "Tile")
+                        basePart = child;
+                    if (inlayPart == null && (name == "Face" || name.EndsWith(" Face") || name.Contains("Face")))
+                        inlayPart = child;
+                }
+            }
+
+            if (basePart != null)
+                baseRenderer = basePart.GetComponent<MeshRenderer>();
+            if (inlayPart != null)
+                inlayRenderer = inlayPart.GetComponent<MeshRenderer>();
+
+            return baseRenderer != null && inlayRenderer != null;
         }
 
     }

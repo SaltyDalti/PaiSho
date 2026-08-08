@@ -5,14 +5,23 @@ namespace PaiSho.Board
 {
     public static class BoardUtils
     {
+        /// <summary>Playable garden spans x,z in [-9, 9] (19 cells).</summary>
         public static readonly int BoardWidth = 19;
         public static readonly int BoardHeight = 19;
-        public static readonly int BoardSize = BoardWidth * BoardHeight;
-        public static readonly int CenterPortCoordinate = 209;
+
+        /// <summary>
+        /// Encoding stride used by <see cref="ToCoordinate"/>. Intentionally 20
+        /// (not 19) so row/column math stays aligned with historical board data.
+        /// </summary>
+        public static readonly int CoordStride = 20;
+
+        public static readonly int BoardSize = CoordStride * CoordStride;
+        public static readonly int CenterPortCoordinate = ToCoordinate(0, 0);
 
         public static readonly HashSet<int> LegalPoints = GenerateLegalPoints();
 
-        public static readonly int[] AllDirections = { -19, 19, -1, 1, -20, -18, 20, 18 };
+        // Ortho + diagonal neighbors in stride-20 encoding.
+        public static readonly int[] AllDirections = { -CoordStride, CoordStride, -1, 1, -(CoordStride + 1), -(CoordStride - 1), CoordStride + 1, CoordStride - 1 };
 
         private static HashSet<int> GenerateLegalPoints()
         {
@@ -25,8 +34,7 @@ namespace PaiSho.Board
                     int manhattanDistance = Mathf.Abs(x) + Mathf.Abs(z);
                     if (manhattanDistance <= 12)
                     {
-                        int coord = ToCoordinate(x, z);
-                        points.Add(coord);
+                        points.Add(ToCoordinate(x, z));
                     }
                 }
             }
@@ -36,48 +44,35 @@ namespace PaiSho.Board
 
         public static bool IsValidPointCoordinate(int coord)
         {
-            return coord >= 0 && coord < BoardSize;
+            return LegalPoints.Contains(coord);
         }
 
         public static int ToCoordinate(int x, int z)
         {
-            return (z + 9) * 20 + (x + 9);
+            return (z + 9) * CoordStride + (x + 9);
         }
 
         public static Vector2Int FromCoordinate(int coordinate)
         {
-            int x = (coordinate % 20) - 9;
-            int z = (coordinate / 20) - 9;
+            int x = (coordinate % CoordStride) - 9;
+            int z = (coordinate / CoordStride) - 9;
             return new Vector2Int(x, z);
         }
 
         public static Vector2Int ToGrid(int coord)
         {
-            int x = (coord % 20) - 9;
-            int z = (coord / 20) - 9;
-            return new Vector2Int(x, z);
+            return FromCoordinate(coord);
         }
 
         public static List<int> GetNeighbors(int coord)
         {
             List<int> neighbors = new List<int>();
 
-            int row = coord / BoardWidth;
-            int col = coord % BoardWidth;
-
-            int[] rowOffsets = { -1, 1, 0, 0, -1, -1, 1, 1 };
-            int[] colOffsets = { 0, 0, -1, 1, -1, 1, -1, 1 };
-
-            for (int i = 0; i < rowOffsets.Length; i++)
+            foreach (int offset in AllDirections)
             {
-                int newRow = row + rowOffsets[i];
-                int newCol = col + colOffsets[i];
-
-                if (newRow >= 0 && newRow < BoardHeight && newCol >= 0 && newCol < BoardWidth)
-                {
-                    int neighborCoord = newRow * BoardWidth + newCol;
-                    neighbors.Add(neighborCoord);
-                }
+                int neighbor = coord + offset;
+                if (IsValidPointCoordinate(neighbor))
+                    neighbors.Add(neighbor);
             }
 
             return neighbors;

@@ -79,27 +79,39 @@ namespace PaiSho.Game
 
             if (basePart == null || inlayPart == null)
             {
-                Debug.LogError("[SpringPlacementManager] Tile or Face not found on Piece prefab!");
+                foreach (Transform child in piece.transform)
+                {
+                    string name = child.name;
+                    if (basePart == null && name == "Tile")
+                        basePart = child;
+                    if (inlayPart == null && (name == "Face" || name.EndsWith(" Face") || name.Contains("Face")))
+                        inlayPart = child;
+                }
+            }
+
+            if (basePart == null || inlayPart == null)
+            {
+                Debug.LogWarning("[SpringPlacementManager] Tile/Face children not found; keeping prefab materials.");
                 return;
             }
 
             MeshRenderer baseRenderer = basePart.GetComponent<MeshRenderer>();
             MeshRenderer inlayRenderer = inlayPart.GetComponent<MeshRenderer>();
 
-            if (baseRenderer == null || inlayRenderer == null)
+            if (baseRenderer == null || inlayRenderer == null || MaterialManager.Instance == null)
             {
-                Debug.LogError("[SpringPlacementManager] Missing MeshRenderer on Tile or Face!");
+                Debug.LogWarning("[SpringPlacementManager] Missing renderer or MaterialManager; skipping ownership tint.");
                 return;
             }
 
-            OwnerType ownerType = OwnerType.None;
-            if (owner == Player.Host)
-                ownerType = OwnerType.Host;
-            else if (owner == Player.Opponent)
-                ownerType = OwnerType.Opponent;
+            OwnerType ownerType = owner == Player.Host ? OwnerType.Host : OwnerType.Opponent;
+            Material baseMat = MaterialManager.Instance.TileBaseMaterial;
+            Material inlayMat = MaterialManager.Instance.GetEngravingMaterial(ownerType);
+            if (baseMat == null || inlayMat == null)
+                return;
 
-            baseRenderer.material = MaterialManager.Instance.TileBaseMaterial;
-            inlayRenderer.material = MaterialManager.Instance.GetEngravingMaterial(ownerType);
+            baseRenderer.material = baseMat;
+            inlayRenderer.material = inlayMat;
         }
 
 
