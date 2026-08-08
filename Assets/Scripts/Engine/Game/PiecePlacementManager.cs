@@ -261,6 +261,12 @@ namespace PaiSho.Game
             }
 
             root.AddComponent<Piece>();
+            // BoardInteraction raycasts the Tile layer; put a collider on the root so
+            // piece/tile selection works even though child primitive colliders are removed.
+            var box = root.AddComponent<BoxCollider>();
+            box.size = new Vector3(1.2f, 0.4f, 1.2f);
+            box.center = new Vector3(0f, 0.15f, 0f);
+            root.layer = LayerMask.NameToLayer("Tile");
             return root;
         }
 
