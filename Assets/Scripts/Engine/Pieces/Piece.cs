@@ -79,14 +79,8 @@ namespace PaiSho.Pieces
         }
 
         // --- Gameplay Logic ---
-        public int GetModifiedMovementRange()
-        {
-            Season current = SeasonManager.Instance.GetCurrentSeason();
-
-            if (current == Season.Spring && (Type == PieceType.Jasmine || Type == PieceType.Lily || Type == PieceType.Jade))
-                return 2; // +1 movement during spring
-            return 1;
-        }
+        public int GetModifiedMovementRange() =>
+            SeasonRules.ModifiedMovementRange(Type, SeasonMapping.Current());
 
         public bool CanBeCaptured() =>
             CaptureRules.CanBeCaptured(Type, SeasonMapping.Current());
@@ -110,15 +104,8 @@ namespace PaiSho.Pieces
                 other.IsBlooming());
         }
 
-        public int GetScoreValue()
-        {
-            Season current = SeasonManager.Instance.GetCurrentSeason();
-
-            if (current == Season.Winter && (Type == PieceType.Rock || Type == PieceType.Wheel || Type == PieceType.Lotus))
-                return PointValue + 1;
-
-            return PointValue;
-        }
+        public int GetScoreValue() =>
+            SeasonRules.BaseScoreValue(Type, SeasonMapping.Current(), PointValue);
 
         public static bool IsFlowerType(PieceType type) => PieceTraits.IsFlower(type);
 

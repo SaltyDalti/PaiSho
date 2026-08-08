@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using PaiSho.Pieces;
+using PaiSho.Domain;
 
 namespace PaiSho.Game
 {
@@ -8,7 +9,7 @@ namespace PaiSho.Game
     {
         public static ScoringManager Instance;
 
-        private Dictionary<Player, int> totalScores = new ();
+        private Dictionary<Player, int> totalScores = new();
 
         private void Awake()
         {
@@ -26,57 +27,19 @@ namespace PaiSho.Game
         /// </summary>
         public int CalculateScore(Player player, List<Piece> pieces)
         {
-            int score = 0;
+            TurnScoreBreakdown breakdown = ScoringRules.CalculateTurnScore(
+                PlacementValidator.ToSeat(player),
+                PieceStatusFactory.FromPieces(pieces),
+                SeasonMapping.Current());
 
-            foreach (Piece piece in pieces)
-            {
-                if (piece.Owner != player || piece.IsGhost) continue;
+            if (breakdown.EarnedFlowBonus)
+                DebugLogger.Log($">>> {player} earned a Flow Bonus (+{ScoringRules.FlowBonusPoints})");
 
-                score += piece.GetScoreValue();
+            if (breakdown.EarnedEmptyHarmonyBonus)
+                DebugLogger.Log($">>> {player} earned an Empty Harmony Bonus (+{ScoringRules.EmptyHarmonyBonusPoints})");
 
-                if (piece.Type == PieceType.Lotus && piece.IsBlooming())
-                    score += 2;
-
-                if (SeasonManager.Instance.IsInSeason(piece.Type))
-                    score += 1;
-
-                if (piece.PreviousWiltLevel > piece.WiltLevel && piece.WiltLevel < 2)
-                    score += 2; // Revival bonus
-            }
-
-            score += ApplyPoeticBonuses(player, pieces);
-
-            totalScores[player] += score;
-            return score;
-        }
-
-        /// <summary>
-        /// Poetic bonuses reward graceful board choreography.
-        /// </summary>
-        private int ApplyPoeticBonuses(Player player, List<Piece> pieces)
-        {
-            int bonus = 0;
-
-            int harmonizedTiles = pieces.FindAll(p => p.Owner == player && p.InHarmony).Count;
-            int totalTiles = pieces.FindAll(p => p.Owner == player).Count;
-
-            // Flow Bonus: many tiles harmonizing
-            if (harmonizedTiles >= 5)
-            {
-                bonus += 3;
-                DebugLogger.Log($">>> {player} earned a Flow Bonus (+3)");
-            }
-
-            // Empty Harmony Bonus: solo harmonies with no neighbors
-            if (harmonizedTiles > 0 && harmonizedTiles == totalTiles)
-            {
-                bonus += 2;
-                DebugLogger.Log($">>> {player} earned an Empty Harmony Bonus (+2)");
-            }
-
-            // Future bonus types can be added here
-
-            return bonus;
+            totalScores[player] += breakdown.Total;
+            return breakdown.Total;
         }
 
         /// <summary>
