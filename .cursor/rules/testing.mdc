@@ -1,0 +1,12 @@
+---
+description: How to verify changes
+globs: tests/**/*,.github/workflows/**
+alwaysApply: false
+---
+
+# Testing
+
+- Domain: `dotnet test tests/PaiSho.Rules.Tests`
+- CI runs the same command on PRs.
+- Do not claim Unity playmode verification unless an editor run was actually performed.
+- Prefer small scenario fixtures (coords + piece types + expected legal moves / outcomes).
