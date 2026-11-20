@@ -61,3 +61,4 @@ Assets/Models.meta
 # Procedural material .blend library (editor-only bulk)
 Assets/Materials/materials/
 Assets/Materials/materials.meta
+tools/.glbopt-deps/

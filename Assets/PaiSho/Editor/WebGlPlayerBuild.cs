@@ -70,8 +70,29 @@ namespace PaiSho.EditorTools
             }
 
             AssetDatabase.SaveAssets();
+            LogOutputSizes(OutputDirectory);
             Debug.Log($"WebGL build succeeded: {summary.totalSize} bytes at {OutputDirectory}");
             EditorApplication.Exit(0);
+        }
+
+        static void LogOutputSizes(string outputDirectory)
+        {
+            string buildDir = Path.Combine(outputDirectory, "Build");
+            if (!Directory.Exists(buildDir))
+            {
+                Debug.LogWarning($"WebGL size report: missing {buildDir}");
+                return;
+            }
+
+            long total = 0;
+            foreach (string path in Directory.GetFiles(buildDir))
+            {
+                long size = new FileInfo(path).Length;
+                total += size;
+                Debug.Log($"WebGL output {Path.GetFileName(path)}: {size} bytes");
+            }
+
+            Debug.Log($"WebGL Build/ folder total: {total} bytes");
         }
     }
 }
