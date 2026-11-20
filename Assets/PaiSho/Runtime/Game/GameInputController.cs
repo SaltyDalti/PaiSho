@@ -41,13 +41,7 @@ namespace PaiSho.Game
 
         private void Update()
         {
-            if (TitleMenu.Instance != null && TitleMenu.Instance.IsOpen)
-                return;
-
-            if (GameUI.IsPassScrimShowing)
-                return;
-
-            if (GameStateManager.Instance != null && GameStateManager.Instance.IsEndPhase())
+            if (GameUI.IsBlockingBoardInput)
                 return;
 
             if (AiController.Instance != null && AiController.Instance.IsAiTurn())

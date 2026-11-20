@@ -19,8 +19,18 @@ namespace PaiSho.Game
     [DefaultExecutionOrder(50)]
     public class GameUI : MonoBehaviour
     {
-        public static bool IsPointerOverHud =>
-            EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
+        private static GameUI instance;
+        private static readonly List<RaycastResult> RaycastScratch = new();
+
+        /// <summary>True when the pointer is over any raycasting HUD graphic (mouse or touch).</summary>
+        public static bool IsPointerOverHud => instance != null && instance.IsPointerOverHudInternal();
+
+        /// <summary>True while title, end card, pass scrim, or a modal sheet should block board/tray input.</summary>
+        public static bool IsBlockingBoardInput =>
+            IsPassScrimShowing ||
+            (TitleMenu.Instance != null && TitleMenu.Instance.IsOpen) ||
+            (instance != null && instance.IsModalSheetOpen()) ||
+            (GameStateManager.Instance != null && GameStateManager.Instance.IsEndPhase());
 
         /// <summary>True while the hotseat pass-device scrim blocks board/tray input.</summary>
         public static bool IsPassScrimShowing { get; private set; }
@@ -41,13 +51,18 @@ namespace PaiSho.Game
         private Vector2 toastRestPosition;
         private CanvasGroup toastGroup;
         private CanvasGroup endScreenGroup;
+        private CanvasGroup hudCanvasGroup;
         private RectTransform guideSheet;
         private RectTransform logSheet;
         private RectTransform echoSheet;
         private RectTransform echoButtonRow;
         private RectTransform menuSheet;
+        private RectTransform sheetBackdrop;
         private RectTransform passScrimSheet;
         private RectTransform safeArea;
+        private RectTransform metaPill;
+        private RectTransform scorePill;
+        private RectTransform contextPill;
 
         private HudButton passButton;
         private TextMeshProUGUI passButtonLabel;
@@ -79,10 +94,32 @@ namespace PaiSho.Game
 
         private void Awake()
         {
+            instance = this;
             EnsureEventSystem();
             HudDesignSystem.EnsureDefaultFont();
             BuildHud();
             hudReady = true;
+        }
+
+        private void OnDestroy()
+        {
+            if (instance == this)
+                instance = null;
+        }
+
+        /// <summary>Called from soft match reset so hotseat scrim / sheet state cannot stick across games.</summary>
+        public static void NotifyMatchReset()
+        {
+            if (instance == null)
+                return;
+
+            instance.HidePassScrim();
+            instance.lastHotseatTurnNumber = -1;
+            instance.showGuide = false;
+            instance.showLog = false;
+            if (instance.menuSheet != null)
+                instance.menuSheet.gameObject.SetActive(false);
+            instance.RefreshSheetBackdrop();
         }
 
         private void LateUpdate()
@@ -92,20 +129,107 @@ namespace PaiSho.Game
 
             RefreshSafeAreaIfChanged();
             ApplyHudTypeScaleIfChanged();
+            ApplyTitleVisibility();
 
             if (TitleMenu.Instance != null && TitleMenu.Instance.IsOpen)
                 return;
 
             if (GameStateManager.Instance != null && GameStateManager.Instance.IsEndPhase())
             {
+                HidePassScrim();
+                if (menuSheet != null)
+                    menuSheet.gameObject.SetActive(false);
+                showGuide = false;
+                showLog = false;
+                RefreshSheetBackdrop();
                 ShowEndScreen();
                 return;
             }
 
             HideEndScreen();
             RefreshHud();
+            ClampTopPillWidths();
+            RefreshSheetBackdrop();
             RefreshToast();
             RefreshEchoChooser();
+        }
+
+        private void ClampTopPillWidths()
+        {
+            ClampRectWidth(metaPill, 420f);
+            ClampRectWidth(scorePill, 380f);
+            ClampRectWidth(contextPill, 520f);
+        }
+
+        private static void ClampRectWidth(RectTransform rect, float maxWidth)
+        {
+            if (rect == null)
+                return;
+
+            Vector2 size = rect.sizeDelta;
+            if (size.x > maxWidth)
+            {
+                size.x = maxWidth;
+                rect.sizeDelta = size;
+            }
+        }
+
+        private void ApplyTitleVisibility()
+        {
+            if (hudCanvasGroup == null)
+                return;
+
+            bool titleOpen = TitleMenu.Instance != null && TitleMenu.Instance.IsOpen;
+            hudCanvasGroup.alpha = titleOpen ? 0f : 1f;
+            hudCanvasGroup.blocksRaycasts = !titleOpen;
+            hudCanvasGroup.interactable = !titleOpen;
+        }
+
+        private bool IsModalSheetOpen()
+        {
+            return (menuSheet != null && menuSheet.gameObject.activeSelf) ||
+                   showGuide ||
+                   showLog ||
+                   (echoSheet != null && echoSheet.gameObject.activeSelf);
+        }
+
+        private bool IsPointerOverHudInternal()
+        {
+            if (EventSystem.current == null)
+                return false;
+
+            if (IsModalSheetOpen() || IsPassScrimShowing)
+                return true;
+
+            // Prefer a real UI raycast so touch/WebGL finger ids work (bare IsPointerOverGameObject often lies).
+            var eventData = new PointerEventData(EventSystem.current)
+            {
+                position = ReadPointerScreenPosition()
+            };
+            RaycastScratch.Clear();
+            EventSystem.current.RaycastAll(eventData, RaycastScratch);
+            for (int i = 0; i < RaycastScratch.Count; i++)
+            {
+                var go = RaycastScratch[i].gameObject;
+                if (go != null && go.GetComponentInParent<Canvas>() != null)
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static Vector2 ReadPointerScreenPosition()
+        {
+            if (UnityEngine.InputSystem.Touchscreen.current != null &&
+                UnityEngine.InputSystem.Touchscreen.current.primaryTouch.press.isPressed)
+            {
+                return UnityEngine.InputSystem.Touchscreen.current.primaryTouch.position.ReadValue();
+            }
+
+            if (UnityEngine.InputSystem.Mouse.current != null)
+                return UnityEngine.InputSystem.Mouse.current.position.ReadValue();
+
+            return new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
         }
 
         private static void EnsureEventSystem()
@@ -121,9 +245,11 @@ namespace PaiSho.Game
         private void BuildHud()
         {
             Canvas canvas = HudBuilder.EnsureCanvas(transform, "GameHud");
+            hudCanvasGroup = canvas.gameObject.AddComponent<CanvasGroup>();
             safeArea = HudBuilder.Stretch(canvas.transform, "SafeArea");
             ApplySafeArea();
 
+            BuildSheetBackdrop(safeArea);
             BuildTopPills(safeArea);
             BuildContextPill(safeArea);
             BuildDock(safeArea);
@@ -133,6 +259,48 @@ namespace PaiSho.Game
             BuildEchoChooser(safeArea);
             BuildEndScreen(safeArea);
             BuildPassScrim(safeArea);
+        }
+
+        private void BuildSheetBackdrop(RectTransform safe)
+        {
+            sheetBackdrop = HudBuilder.Stretch(safe, "SheetBackdrop");
+            HudBuilder.AddSlicedImage(sheetBackdrop, null, new Color(0.04f, 0.05f, 0.08f, 0.45f), raycast: true);
+            var button = sheetBackdrop.gameObject.AddComponent<Button>();
+            button.transition = Selectable.Transition.None;
+            button.onClick.AddListener(CloseModalSheets);
+            sheetBackdrop.gameObject.SetActive(false);
+            sheetBackdrop.SetAsFirstSibling();
+        }
+
+        private void CloseModalSheets()
+        {
+            showGuide = false;
+            showLog = false;
+            if (menuSheet != null)
+                menuSheet.gameObject.SetActive(false);
+            RefreshSheetBackdrop();
+        }
+
+        private void RefreshSheetBackdrop()
+        {
+            if (sheetBackdrop == null)
+                return;
+
+            bool open = IsModalSheetOpen();
+            sheetBackdrop.gameObject.SetActive(open);
+            if (open)
+            {
+                // Keep backdrop under sheets but above board chrome.
+                sheetBackdrop.SetAsFirstSibling();
+                if (menuSheet != null && menuSheet.gameObject.activeSelf)
+                    menuSheet.SetAsLastSibling();
+                if (showGuide && guideSheet != null)
+                    guideSheet.SetAsLastSibling();
+                if (showLog && logSheet != null)
+                    logSheet.SetAsLastSibling();
+                if (echoSheet != null && echoSheet.gameObject.activeSelf)
+                    echoSheet.SetAsLastSibling();
+            }
         }
 
         /// <summary>Anchors the HUD root to the device safe area (notches / rounded corners), plus fixed breathing room.</summary>
@@ -162,17 +330,26 @@ namespace PaiSho.Game
 
         private void BuildTopPills(RectTransform safe)
         {
-            var metaPill = HudBuilder.CreatePill(safe, "Meta", new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 0f));
+            metaPill = HudBuilder.CreatePill(safe, "Meta", new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 0f));
+            // Prefer grow-to-content, but never let the meta strip cover half the board.
+            var metaFitter = metaPill.GetComponent<ContentSizeFitter>();
+            if (metaFitter != null)
+                metaFitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+            metaPill.sizeDelta = new Vector2(320f, HudDesignSystem.PillHeight);
+            CapPillWidth(metaPill, 420f);
             metaLine = HudBuilder.AddPillText(metaPill, "Spring | Turn 1", 18f, HudDesignSystem.TextPrimary, FontStyles.Bold);
+            metaLine.overflowMode = TextOverflowModes.Ellipsis;
             RegisterScalableText(metaLine, 18f);
 
             // You-first stats pill: your line reads bold/full-size, opponent's is a quieter second line.
-            var scorePill = HudBuilder.CreateRect(
+            scorePill = HudBuilder.CreateRect(
                 safe, "Score", new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), Vector2.zero, new Vector2(260f, HudDesignSystem.PillHeight));
             HudBuilder.AddSlicedImage(scorePill, HudDesignSystem.PillSprite, Color.white);
+            CapPillWidth(scorePill, 380f);
             var scoreFitter = scorePill.gameObject.AddComponent<ContentSizeFitter>();
-            scoreFitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+            scoreFitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
             scoreFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            scorePill.sizeDelta = new Vector2(280f, HudDesignSystem.PillHeight);
             var scoreLayout = scorePill.gameObject.AddComponent<VerticalLayoutGroup>();
             scoreLayout.padding = new RectOffset(16, 16, 8, 8);
             scoreLayout.spacing = 2f;
@@ -184,13 +361,27 @@ namespace PaiSho.Game
 
             var youRt = HudBuilder.CreateRect(scorePill, "You", Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
             youLine = HudBuilder.CreateText(youRt, "You  0 pts", 17f, FontStyles.Bold, HudDesignSystem.TextPrimary, TextAlignmentOptions.MidlineRight);
+            youLine.overflowMode = TextOverflowModes.Ellipsis;
             youRt.gameObject.AddComponent<LayoutElement>().minWidth = 40f;
             RegisterScalableText(youLine, 17f);
 
             var oppRt = HudBuilder.CreateRect(scorePill, "Opponent", Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
             oppLine = HudBuilder.CreateText(oppRt, "Opponent  0 pts", 13f, FontStyles.Normal, HudDesignSystem.TextSecondary, TextAlignmentOptions.MidlineRight);
+            oppLine.overflowMode = TextOverflowModes.Ellipsis;
             oppRt.gameObject.AddComponent<LayoutElement>().minWidth = 40f;
             RegisterScalableText(oppLine, 13f);
+        }
+
+        private static void CapPillWidth(RectTransform pill, float maxWidth)
+        {
+            if (pill == null)
+                return;
+
+            var layout = pill.gameObject.GetComponent<LayoutElement>();
+            if (layout == null)
+                layout = pill.gameObject.AddComponent<LayoutElement>();
+            layout.preferredWidth = maxWidth;
+            layout.flexibleWidth = 0f;
         }
 
         private void RegisterScalableText(TextMeshProUGUI text, float baseSize)
@@ -201,22 +392,24 @@ namespace PaiSho.Game
 
         private void BuildContextPill(RectTransform safe)
         {
-            var pill = HudBuilder.CreatePill(
+            contextPill = HudBuilder.CreatePill(
                 safe,
                 "Context",
                 new Vector2(0.5f, 0f),
                 new Vector2(0.5f, 0f),
                 new Vector2(0f, HudDesignSystem.DockHeight + 28f),
                 320f);
-            pill.sizeDelta = new Vector2(680f, HudDesignSystem.PillHeight);
-            var fitter = pill.GetComponent<ContentSizeFitter>();
+            // Keep context narrower than MaxDockWidth so it does not dominate the lower garden on phones.
+            contextPill.sizeDelta = new Vector2(520f, HudDesignSystem.PillHeight);
+            CapPillWidth(contextPill, 520f);
+            var fitter = contextPill.GetComponent<ContentSizeFitter>();
             if (fitter != null)
             {
                 fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
                 fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
             }
 
-            contextLine = HudBuilder.AddPillText(pill, "Tap a tile or drag from your rack.", 16f, HudDesignSystem.TextSecondary);
+            contextLine = HudBuilder.AddPillText(contextPill, "Tap a tile or drag from your rack.", 16f, HudDesignSystem.TextSecondary);
             contextLine.textWrappingMode = TextWrappingModes.Normal;
             contextLine.overflowMode = TextOverflowModes.Ellipsis;
             RegisterScalableText(contextLine, 16f);
@@ -299,6 +492,8 @@ namespace PaiSho.Game
                 showLog = false;
                 RefreshMenuLabels();
             }
+
+            RefreshSheetBackdrop();
         }
 
         private static void OnPassOrEndTurnClicked()
@@ -332,13 +527,14 @@ namespace PaiSho.Game
 
         private void BuildToast(RectTransform safe)
         {
+            // Top-center: tips/errors must not sit on the host garden / tray (bottom stack already owns that lane).
             var toast = HudBuilder.CreateRect(
                 safe,
                 "Toast",
-                new Vector2(0.5f, 0f),
-                new Vector2(0.5f, 0f),
-                new Vector2(0.5f, 0f),
-                new Vector2(0f, HudDesignSystem.DockHeight + 84f),
+                new Vector2(0.5f, 1f),
+                new Vector2(0.5f, 1f),
+                new Vector2(0.5f, 1f),
+                new Vector2(0f, -HudDesignSystem.PillHeight - 12f),
                 new Vector2(560f, HudDesignSystem.PillHeight));
 
             HudBuilder.AddSlicedImage(toast, HudDesignSystem.PillSprite, new Color(0.22f, 0.1f, 0.12f, 0.92f));
@@ -352,6 +548,7 @@ namespace PaiSho.Game
             label.offsetMin = new Vector2(16f, 8f);
             label.offsetMax = new Vector2(-16f, -8f);
             toastLine = HudBuilder.CreateText(label, "", 16f, FontStyles.Bold, HudDesignSystem.Danger, TextAlignmentOptions.Center);
+            toastLine.overflowMode = TextOverflowModes.Ellipsis;
             RegisterScalableText(toastLine, 16f);
         }
 
@@ -453,6 +650,7 @@ namespace PaiSho.Game
 
         private void BuildMenuSheet(RectTransform safe)
         {
+            // Cap height so short WebGL / phone viewports keep some board visible; list scrolls inside.
             menuSheet = HudBuilder.CreateRect(
                 safe,
                 "MenuSheet",
@@ -460,7 +658,7 @@ namespace PaiSho.Game
                 new Vector2(0.5f, 0f),
                 new Vector2(0.5f, 0f),
                 new Vector2(0f, HudDesignSystem.DockHeight + 20f),
-                new Vector2(420f, 720f));
+                new Vector2(420f, 520f));
 
             HudBuilder.AddSlicedImage(menuSheet, HudDesignSystem.PanelSprite, Color.white, raycast: true);
 
@@ -470,21 +668,46 @@ namespace PaiSho.Game
             var menuTitle = HudBuilder.CreateText(titleRt, "Menu", 18f, FontStyles.Bold, HudDesignSystem.TextPrimary, TextAlignmentOptions.MidlineLeft);
             RegisterScalableText(menuTitle, 18f);
 
-            var listGo = new GameObject("MenuList", typeof(RectTransform), typeof(VerticalLayoutGroup));
-            listGo.transform.SetParent(menuSheet, false);
+            var scrollGo = new GameObject("MenuScroll", typeof(RectTransform), typeof(Image), typeof(ScrollRect), typeof(RectMask2D));
+            scrollGo.transform.SetParent(menuSheet, false);
+            var scrollRt = scrollGo.GetComponent<RectTransform>();
+            scrollRt.anchorMin = Vector2.zero;
+            scrollRt.anchorMax = Vector2.one;
+            scrollRt.offsetMin = new Vector2(8f, 12f);
+            scrollRt.offsetMax = new Vector2(-8f, -40f);
+            var scrollImage = scrollGo.GetComponent<Image>();
+            scrollImage.color = new Color(0f, 0f, 0f, 0.01f);
+            scrollImage.raycastTarget = true;
+
+            var listGo = new GameObject("MenuList", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
+            listGo.transform.SetParent(scrollGo.transform, false);
             var listRt = listGo.GetComponent<RectTransform>();
-            listRt.anchorMin = Vector2.zero;
-            listRt.anchorMax = Vector2.one;
-            listRt.offsetMin = new Vector2(14f, 14f);
-            listRt.offsetMax = new Vector2(-14f, -40f);
+            listRt.anchorMin = new Vector2(0f, 1f);
+            listRt.anchorMax = new Vector2(1f, 1f);
+            listRt.pivot = new Vector2(0.5f, 1f);
+            listRt.anchoredPosition = Vector2.zero;
+            listRt.sizeDelta = new Vector2(0f, 0f);
 
             var listLayout = listGo.GetComponent<VerticalLayoutGroup>();
+            listLayout.padding = new RectOffset(6, 6, 4, 4);
             listLayout.spacing = 8f;
             listLayout.childAlignment = TextAnchor.UpperCenter;
             listLayout.childControlWidth = true;
             listLayout.childControlHeight = true;
             listLayout.childForceExpandWidth = true;
             listLayout.childForceExpandHeight = false;
+
+            var listFitter = listGo.GetComponent<ContentSizeFitter>();
+            listFitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+            listFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+            var scroll = scrollGo.GetComponent<ScrollRect>();
+            scroll.content = listRt;
+            scroll.viewport = scrollRt;
+            scroll.horizontal = false;
+            scroll.vertical = true;
+            scroll.movementType = ScrollRect.MovementType.Clamped;
+            scroll.scrollSensitivity = 24f;
 
             AddMenuToggleRow(listGo.transform, "Mute", () => GameSession.Muted ? "On" : "Off", () => GameSession.Muted = !GameSession.Muted);
             AddMenuSliderRow(listGo.transform, "Volume");
@@ -495,11 +718,13 @@ namespace PaiSho.Game
             {
                 showGuide = !showGuide;
                 menuSheet.gameObject.SetActive(false);
+                RefreshSheetBackdrop();
             });
             AddMenuActionRow(listGo.transform, "Move Log", () =>
             {
                 OnLogClicked();
                 menuSheet.gameObject.SetActive(false);
+                RefreshSheetBackdrop();
             });
             AddMenuActionRow(listGo.transform, "Clear Selection", () => GameInputController.Instance?.ClearSelection());
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
@@ -508,7 +733,11 @@ namespace PaiSho.Game
 #endif
             AddMenuActionRow(listGo.transform, "Forfeit Match", OnForfeitClicked);
             AddMenuActionRow(listGo.transform, "Return to Title", OnReturnToTitleClicked);
-            AddMenuActionRow(listGo.transform, "Close", () => menuSheet.gameObject.SetActive(false));
+            AddMenuActionRow(listGo.transform, "Close", () =>
+            {
+                menuSheet.gameObject.SetActive(false);
+                RefreshSheetBackdrop();
+            });
 
             menuSheet.gameObject.SetActive(false);
         }
@@ -793,7 +1022,8 @@ namespace PaiSho.Game
                 !ReserveManager.Instance.HasHoldReleased(current) &&
                 ReserveManager.Instance.GetOnHoldCount(current) > 0)
             {
-                holdNote = $" | Hold: {string.Join("/", ReserveManager.Instance.GetOnHold(current))}";
+                // Count-only keeps the meta pill from spanning the board when several tiles sit on hold.
+                holdNote = $" | Hold ×{ReserveManager.Instance.GetOnHoldCount(current)}";
             }
 
             string metaPrefix = season != null
@@ -980,8 +1210,9 @@ namespace PaiSho.Game
                 return;
             }
 
+            // Toast is top-anchored: slide down slightly on appear.
             float slide = GameplayFeedback.GetSlideOffset();
-            toastRect.anchoredPosition = toastRestPosition + new Vector2(0f, -slide);
+            toastRect.anchoredPosition = toastRestPosition + new Vector2(0f, slide);
             toastRect.localScale = Vector3.one * GameplayFeedback.GetPopScale();
         }
 

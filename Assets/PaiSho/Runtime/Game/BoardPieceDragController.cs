@@ -84,13 +84,7 @@ namespace PaiSho.Game
 
         private bool ShouldHandlePointer()
         {
-            if (TitleMenu.Instance != null && TitleMenu.Instance.IsOpen)
-                return false;
-
-            if (GameUI.IsPassScrimShowing)
-                return false;
-
-            if (GameStateManager.Instance != null && GameStateManager.Instance.IsEndPhase())
+            if (GameUI.IsBlockingBoardInput || GameUI.IsPointerOverHud)
                 return false;
 
             if (GameStateManager.Instance == null || GameStateManager.Instance.IsSpringPhase())
