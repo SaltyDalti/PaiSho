@@ -7,7 +7,8 @@ namespace PaiSho
     /// <summary>Frames the 3D board plus the host hand rack in one stable gameplay shot.</summary>
     public static class GameplayCameraFraming
     {
-        private const float HudBottomReserve = 0.16f;
+        // Dock + context pill + safe padding; keep host garden/tray clear of the chrome stack.
+        private const float HudBottomReserve = 0.24f;
         private const float BoundsPadding = 1.22f;
 
         public static bool TryBuildGameplayBounds(BoardLayout layout, out Bounds bounds)

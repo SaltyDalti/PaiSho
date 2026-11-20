@@ -14,6 +14,7 @@ namespace PaiSho.Game
             PieceFeedbackManager.Instance?.CancelAll();
             GameInputController.Instance?.ClearSelection();
             LegalMoveHighlighter.Instance?.Clear();
+            GameUI.NotifyMatchReset();
 
             BoardManager.Instance.ClearAllPieces();
             BoatManager.Instance?.ClearAll();

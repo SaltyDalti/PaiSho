@@ -136,6 +136,7 @@ namespace PaiSho.Game
             PlaceMenuButton(panel, "New Game vs Computer", ref y, () => StartMatch(true));
             PlaceMenuButton(panel, "New Game Hotseat", ref y, () => StartMatch(false));
             PlaceMenuButton(panel, "Settings", ref y, ToggleSettings);
+            // WebGL / editor / development builds: omit Quit (no-op or unwanted in those players).
 #if !(UNITY_EDITOR || DEVELOPMENT_BUILD || UNITY_WEBGL)
             PlaceMenuButton(panel, "Quit", ref y, () =>
             {

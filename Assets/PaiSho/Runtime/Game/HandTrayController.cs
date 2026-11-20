@@ -221,10 +221,7 @@ namespace PaiSho.Game
             if (Instance != this)
                 return;
 
-            if (TitleMenu.Instance != null && TitleMenu.Instance.IsOpen)
-                return;
-
-            if (GameUI.IsPassScrimShowing)
+            if (GameUI.IsBlockingBoardInput)
                 return;
 
             EnsureTrayRoots();
@@ -738,6 +735,9 @@ namespace PaiSho.Game
 
             if (activeDrag == null)
             {
+                if (GameUI.IsPointerOverHud)
+                    return;
+
                 TrayBinding active = GetActiveTray();
                 if (active == null || !IsPrimaryPressed())
                     return;
