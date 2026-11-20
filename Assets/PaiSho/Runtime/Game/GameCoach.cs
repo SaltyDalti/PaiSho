@@ -43,11 +43,14 @@ namespace PaiSho.Game
             if (GameManager.Instance != null && GameManager.Instance.CountHarmonizedPieces(current) > 0)
                 NotifyHarmonyFormed(current);
 
-            if (MomentumManager.Instance != null && MomentumManager.Instance.GetMomentum(current) > 0)
-                NotifyFirstMomentum(current);
+            if (Domain.MatchRules.HouseExtrasEnabled)
+            {
+                if (MomentumManager.Instance != null && MomentumManager.Instance.GetMomentum(current) > 0)
+                    NotifyFirstMomentum(current);
 
-            if (HasWiltedTile(current))
-                NotifyWiltRisk(current);
+                if (HasWiltedTile(current))
+                    NotifyWiltRisk(current);
+            }
         }
 
         private void NotifySpringPlacement(Player player)

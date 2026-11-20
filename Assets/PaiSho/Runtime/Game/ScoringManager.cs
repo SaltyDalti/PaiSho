@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using PaiSho.Pieces;
 using PaiSho.Board;
+using PaiSho.Domain;
 
 namespace PaiSho.Game
 {
@@ -36,11 +37,14 @@ namespace PaiSho.Game
                 if (piece.Type == PieceType.Lotus && piece.IsBlooming())
                     score += 2;
 
-                if (SeasonManager.Instance.IsInSeason(piece.Type))
-                    score += 1;
+                if (MatchRules.HouseExtrasEnabled)
+                {
+                    if (SeasonManager.Instance != null && SeasonManager.Instance.IsInSeason(piece.Type))
+                        score += 1;
 
-                if (piece.PreviousWiltLevel > piece.WiltLevel && piece.WiltLevel < 2)
-                    score += 2;
+                    if (piece.PreviousWiltLevel > piece.WiltLevel && piece.WiltLevel < 2)
+                        score += 2;
+                }
             }
 
             score += ApplyPoeticBonuses(player, pieces);

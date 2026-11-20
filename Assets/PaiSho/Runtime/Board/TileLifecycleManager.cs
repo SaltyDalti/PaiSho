@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using PaiSho.Pieces;
 using PaiSho.Game;
+using PaiSho.Domain;
 
 namespace PaiSho.Board
 {
@@ -36,6 +37,9 @@ namespace PaiSho.Board
         // Called from Knotweed drain effect
         public void RegisterKnotweedDrain(Player fromPlayer)
         {
+            if (!MatchRules.HouseExtrasEnabled)
+                return;
+
             EchoTileManager.Instance.AddRevivalPoints(fromPlayer, 1);
         }
 
@@ -44,6 +48,18 @@ namespace PaiSho.Board
             // Spring placement is opening setup — neglect/wilt must not age tiles yet,
             // or early spring flowers lose bud glow before play begins.
             if (GameStateManager.Instance != null && GameStateManager.Instance.IsSpringPhase())
+            {
+                foreach (var piece in allPieces)
+                {
+                    if (piece != null && piece.IsNewThisTurn)
+                        piece.IsNewThisTurn = false;
+                }
+
+                return;
+            }
+
+            // Portfolio core: keep wilt/echo aging parked with house extras.
+            if (!MatchRules.HouseExtrasEnabled)
             {
                 foreach (var piece in allPieces)
                 {

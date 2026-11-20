@@ -18,6 +18,7 @@ namespace PaiSho.Rules.Tests
         [InlineData(PieceType.Jasmine, GardenSeason.Summer, true)]
         public void SeasonImmunity_BoatAndKnotweedInSummer(PieceType type, GardenSeason season, bool expected)
         {
+            using var _ = new HouseExtrasScope(enabled: true);
             Assert.Equal(expected, CaptureRules.CanBeCaptured(type, season));
         }
 
@@ -29,6 +30,7 @@ namespace PaiSho.Rules.Tests
         [InlineData(PieceType.Jasmine, GardenSeason.Autumn, true)]
         public void AutumnDisharmonyResistance(PieceType type, GardenSeason season, bool expected)
         {
+            using var _ = new HouseExtrasScope(enabled: true);
             Assert.Equal(expected, CaptureRules.CanBeDisharmonized(type, season));
         }
 
@@ -72,6 +74,8 @@ namespace PaiSho.Rules.Tests
         [Fact]
         public void SummerBoat_IsSeasonImmune()
         {
+            using var _ = new HouseExtrasScope(enabled: true);
+
             BoardPiece attacker = P(Seat.Host, PieceType.Jade, 0, 0);
             BoardPiece boat = P(Seat.Opponent, PieceType.Boat, 0, 1);
             var board = new List<BoardPiece> { attacker, boat };

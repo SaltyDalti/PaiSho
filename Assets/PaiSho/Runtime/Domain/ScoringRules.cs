@@ -44,6 +44,9 @@ namespace PaiSho.Domain
             if (piece.Type == PieceType.Lotus && piece.LotusBlooming)
                 score += BloomingLotusBonus;
 
+            if (!MatchRules.HouseExtrasEnabled)
+                return score;
+
             if (SeasonRules.IsInSeason(piece.Type, season))
                 score += InSeasonBonus;
 

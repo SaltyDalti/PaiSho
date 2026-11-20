@@ -23,6 +23,7 @@ namespace PaiSho.Rules.Tests
         [InlineData(7, true)]
         public void ShouldRotate_UsesTurnsPerSeason(int counter, bool expected)
         {
+            using var _ = new HouseExtrasScope(enabled: true);
             Assert.Equal(SeasonRules.TurnsPerSeason, 6);
             Assert.Equal(expected, SeasonRules.ShouldRotate(counter));
         }
@@ -35,12 +36,14 @@ namespace PaiSho.Rules.Tests
         [InlineData(PieceType.Jasmine, GardenSeason.Winter, false)]
         public void IsInSeason_MatchesCanonicalSets(PieceType type, GardenSeason season, bool expected)
         {
+            using var _ = new HouseExtrasScope(enabled: true);
             Assert.Equal(expected, SeasonRules.IsInSeason(type, season));
         }
 
         [Fact]
         public void SpringFlowers_GetMovementBonus()
         {
+            using var _ = new HouseExtrasScope(enabled: true);
             Assert.Equal(2, SeasonRules.ModifiedMovementRange(PieceType.Lily, GardenSeason.Spring));
             Assert.Equal(1, SeasonRules.ModifiedMovementRange(PieceType.Lily, GardenSeason.Summer));
             Assert.Equal(1, SeasonRules.ModifiedMovementRange(PieceType.Rose, GardenSeason.Spring));
@@ -49,6 +52,7 @@ namespace PaiSho.Rules.Tests
         [Fact]
         public void WinterAccents_GetScoreBump()
         {
+            using var _ = new HouseExtrasScope(enabled: true);
             Assert.Equal(2, SeasonRules.BaseScoreValue(PieceType.Rock, GardenSeason.Winter, 1));
             Assert.Equal(1, SeasonRules.BaseScoreValue(PieceType.Rock, GardenSeason.Spring, 1));
         }
@@ -56,6 +60,7 @@ namespace PaiSho.Rules.Tests
         [Fact]
         public void SpringBonuses_PlacementAndHarmony()
         {
+            using var _ = new HouseExtrasScope(enabled: true);
             var ctx = new SeasonalTurnContext(
                 GardenSeason.Spring,
                 placedThisTurn: true,
@@ -74,6 +79,7 @@ namespace PaiSho.Rules.Tests
         [Fact]
         public void SummerBonuses_FreezeAndRevival()
         {
+            using var _ = new HouseExtrasScope(enabled: true);
             var ctx = new SeasonalTurnContext(
                 GardenSeason.Summer,
                 false, 0, 0,
@@ -90,6 +96,7 @@ namespace PaiSho.Rules.Tests
         [Fact]
         public void WinterBonuses_SingleMoveAndFullHarmony()
         {
+            using var _ = new HouseExtrasScope(enabled: true);
             var ctx = new SeasonalTurnContext(
                 GardenSeason.Winter,
                 false,

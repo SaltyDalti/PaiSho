@@ -1,5 +1,6 @@
 using UnityEngine;
 using PaiSho.Board;
+using PaiSho.Domain;
 using PaiSho.Game;
 using PaiSho;
 
@@ -109,6 +110,9 @@ namespace PaiSho.Pieces
 
         public int GetModifiedMovementRange()
         {
+            if (!MatchRules.HouseExtrasEnabled || SeasonManager.Instance == null)
+                return BaseMovementRange;
+
             Season current = SeasonManager.Instance.GetCurrentSeason();
             if (current == Season.Spring && (Type == PieceType.Jasmine || Type == PieceType.Lily || Type == PieceType.Jade))
                 return BaseMovementRange + 1;
@@ -121,6 +125,9 @@ namespace PaiSho.Pieces
             if (BoardUtils.IsGate(BoardCoordinate))
                 return false;
 
+            if (!MatchRules.HouseExtrasEnabled || SeasonManager.Instance == null)
+                return true;
+
             Season current = SeasonManager.Instance.GetCurrentSeason();
             if (current == Season.Summer && (Type == PieceType.Boat || Type == PieceType.Knotweed))
                 return false;
@@ -130,6 +137,9 @@ namespace PaiSho.Pieces
 
         public bool CanBeDisharmonized()
         {
+            if (!MatchRules.HouseExtrasEnabled || SeasonManager.Instance == null)
+                return true;
+
             Season current = SeasonManager.Instance.GetCurrentSeason();
             if (current == Season.Autumn &&
                 (Type == PieceType.Rose || Type == PieceType.Chrysanthemum || Type == PieceType.Rhododendron))
@@ -140,6 +150,9 @@ namespace PaiSho.Pieces
 
         public int GetScoreValue()
         {
+            if (!MatchRules.HouseExtrasEnabled || SeasonManager.Instance == null)
+                return PointValue;
+
             Season current = SeasonManager.Instance.GetCurrentSeason();
             if (current == Season.Winter && (Type == PieceType.Rock || Type == PieceType.Wheel || Type == PieceType.Lotus))
                 return PointValue + 1;

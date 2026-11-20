@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using PaiSho;
 using PaiSho.Board;
+using PaiSho.Domain;
 using PaiSho.Pieces;
 
 namespace PaiSho.Game
@@ -299,6 +300,9 @@ namespace PaiSho.Game
 
         public void BeginMomentumMode(MomentumSpendMode mode)
         {
+            if (!MatchRules.HouseExtrasEnabled)
+                return;
+
             if (GameManager.Instance != null && GameManager.Instance.PendingBonusMove)
             {
                 GameplayFeedback.Show("Extra Move ready — move a second tile, or press E to end your turn.");

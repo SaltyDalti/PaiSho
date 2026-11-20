@@ -255,6 +255,8 @@ Plus seasonal award bonuses and pot-related bloom logic above.
 
 These are intentional expansions — keep them.
 
+**Portfolio note:** The shippable vertical slice parks this section behind `MatchRules.HouseExtrasEnabled` (default false). Managers and Domain rules stay in tree; set the flag true (or `MatchRules.EnableHouseExtras()`) to restore seasons, wilt, momentum, and echo without redesign.
+
 ### Seasons
 
 Seasons rotate every **6 turns**, starting in **Spring**:

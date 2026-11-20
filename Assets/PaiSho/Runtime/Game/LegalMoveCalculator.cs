@@ -201,7 +201,7 @@ namespace PaiSho.Game
 
         private static int GetSpringBonus(Piece piece, int baseMax)
         {
-            if (SeasonManager.Instance == null)
+            if (!Domain.MatchRules.HouseExtrasEnabled || SeasonManager.Instance == null)
                 return baseMax;
 
             if (SeasonManager.Instance.GetCurrentSeason() == Season.Spring &&

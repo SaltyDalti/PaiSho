@@ -8,6 +8,7 @@ using UnityEngine.InputSystem.UI;
 using UnityEngine.UI;
 using TMPro;
 using PaiSho.Board;
+using PaiSho.Domain;
 using PaiSho.Pieces;
 using PaiSho.UI;
 using PaiSho;
@@ -264,6 +265,15 @@ namespace PaiSho.Game
                 TileSelector.Instance?.TryRotateWheel(current, GameInputController.Instance.SelectedBoardPiece);
             });
             menuButton = HudBuilder.CreateDockButton(row.transform, "Menu", false, ToggleMenuSheet);
+
+            // Portfolio core HUD: hide momentum dock until house extras are restored.
+            bool houseExtras = MatchRules.HouseExtrasEnabled;
+            if (extraMoveButton != null)
+                extraMoveButton.gameObject.SetActive(houseExtras);
+            if (reviveButton != null)
+                reviveButton.gameObject.SetActive(houseExtras);
+            if (freezeButton != null)
+                freezeButton.gameObject.SetActive(houseExtras);
         }
 
         private static void OnExtraMoveClicked()
@@ -347,17 +357,26 @@ namespace PaiSho.Game
 
         private void BuildSheets(RectTransform safe)
         {
+            string guideBodyText = MatchRules.HouseExtrasEnabled
+                ? "Gold lines - harmony\nBlue dots - legal moves\nRed - captures\nVermillion - ports\n\n" +
+                  "Momentum: tap Extra Move before you move to spend M for a second move\n" +
+                  "Revive / Freeze spend Momentum and end the turn\n" +
+                  "Echo: at 10 revival points choose which Ghost flower returns\n" +
+                  "Wilt: idle flowers fade — Revive them with Momentum\n" +
+                  "Knotweed: adjacent enemy flowers are drained (cannot move)\n" +
+                  "Boat: tap flower to load, U / empty space to unload\n" +
+                  "Wheel: select then Rotate\n" +
+                  "Ring: close a harmony chain around Mid to win"
+                : "Gold lines - harmony\nBlue dots - legal moves\nRed - captures\nVermillion - ports\n\n" +
+                  "Place or move one tile per turn\n" +
+                  "Knotweed: adjacent enemy flowers are drained (cannot move)\n" +
+                  "Boat: tap flower to load, U / empty space to unload\n" +
+                  "Wheel: select then Rotate\n" +
+                  "Ring: close a harmony chain around Mid to win";
+
             guideSheet = BuildSheet(safe, "GuideSheet", 360f,
                 "Field guide",
-                "Gold lines - harmony\nBlue dots - legal moves\nRed - captures\nVermillion - ports\n\n" +
-                "Momentum: tap Extra Move before you move to spend M for a second move\n" +
-                "Revive / Freeze spend Momentum and end the turn\n" +
-                "Echo: at 10 revival points choose which Ghost flower returns\n" +
-                "Wilt: idle flowers fade — Revive them with Momentum\n" +
-                "Knotweed: adjacent enemy flowers are drained (cannot move)\n" +
-                "Boat: tap flower to load, U / empty space to unload\n" +
-                "Wheel: select then Rotate\n" +
-                "Ring: close a harmony chain around Mid to win",
+                guideBodyText,
                 out guideBody);
             RegisterScalableText(guideBody, 15f);
 
@@ -765,7 +784,10 @@ namespace PaiSho.Game
             bool bonusPending = GameManager.Instance.PendingBonusMove;
 
             string phase = GameStateManager.Instance != null ? FriendlyPhase() : "Setup";
-            string season = SeasonManager.Instance != null ? SeasonManager.Instance.GetCurrentSeason().ToString() : "Spring";
+            bool houseExtras = MatchRules.HouseExtrasEnabled;
+            string season = houseExtras && SeasonManager.Instance != null
+                ? SeasonManager.Instance.GetCurrentSeason().ToString()
+                : null;
             string holdNote = "";
             if (ReserveManager.Instance != null &&
                 !ReserveManager.Instance.HasHoldReleased(current) &&
@@ -774,28 +796,45 @@ namespace PaiSho.Game
                 holdNote = $" | Hold: {string.Join("/", ReserveManager.Instance.GetOnHold(current))}";
             }
 
+            string metaPrefix = season != null
+                ? $"{phase} | {season} | Turn {GameManager.Instance.GetTurnNumber()}"
+                : $"{phase} | Turn {GameManager.Instance.GetTurnNumber()}";
             metaLine.text = humanTurn
-                ? $"{phase} | {season} | Turn {GameManager.Instance.GetTurnNumber()} | > Your turn{holdNote}"
-                : $"{phase} | {season} | Turn {GameManager.Instance.GetTurnNumber()} | Computer playing...{holdNote}";
+                ? $"{metaPrefix} | > Your turn{holdNote}"
+                : $"{metaPrefix} | Computer playing...{holdNote}";
 
             int hostScore = GameManager.Instance.GetLiveScore(Player.Host);
             int oppScore = GameManager.Instance.GetLiveScore(Player.Opponent);
             int hostHarmony = GameManager.Instance.CountHarmonizedPieces(Player.Host);
             int oppHarmony = GameManager.Instance.CountHarmonizedPieces(Player.Opponent);
-            int hostMomentum = MomentumManager.Instance != null ? MomentumManager.Instance.GetMomentum(Player.Host) : 0;
-            int oppMomentum = MomentumManager.Instance != null ? MomentumManager.Instance.GetMomentum(Player.Opponent) : 0;
-            int hostEcho = EchoTileManager.Instance != null ? EchoTileManager.Instance.GetRevivalPoints(Player.Host) : 0;
-            int oppEcho = EchoTileManager.Instance != null ? EchoTileManager.Instance.GetRevivalPoints(Player.Opponent) : 0;
+            int hostMomentum = houseExtras && MomentumManager.Instance != null
+                ? MomentumManager.Instance.GetMomentum(Player.Host) : 0;
+            int oppMomentum = houseExtras && MomentumManager.Instance != null
+                ? MomentumManager.Instance.GetMomentum(Player.Opponent) : 0;
+            int hostEcho = houseExtras && EchoTileManager.Instance != null
+                ? EchoTileManager.Instance.GetRevivalPoints(Player.Host) : 0;
+            int oppEcho = houseExtras && EchoTileManager.Instance != null
+                ? EchoTileManager.Instance.GetRevivalPoints(Player.Opponent) : 0;
             int hostRing = HarmonyRingDetector.GetRingProgress(Player.Host);
             int oppRing = HarmonyRingDetector.GetRingProgress(Player.Opponent);
 
             // You-first: your stats read full-size on top, opponent's are a quieter second line.
-            youLine.text =
-                $"You  {hostScore} pts · Momentum {hostMomentum} · Harmony {hostHarmony} · " +
-                $"Ring {hostRing}/{HarmonyRingDetector.MinRingSize} · Echo {hostEcho}/10";
-            oppLine.text =
-                $"Opponent  {oppScore} pts · Momentum {oppMomentum} · Harmony {oppHarmony} · " +
-                $"Ring {oppRing}/{HarmonyRingDetector.MinRingSize} · Echo {oppEcho}/10";
+            if (houseExtras)
+            {
+                youLine.text =
+                    $"You  {hostScore} pts · Momentum {hostMomentum} · Harmony {hostHarmony} · " +
+                    $"Ring {hostRing}/{HarmonyRingDetector.MinRingSize} · Echo {hostEcho}/10";
+                oppLine.text =
+                    $"Opponent  {oppScore} pts · Momentum {oppMomentum} · Harmony {oppHarmony} · " +
+                    $"Ring {oppRing}/{HarmonyRingDetector.MinRingSize} · Echo {oppEcho}/10";
+            }
+            else
+            {
+                youLine.text =
+                    $"You  {hostScore} pts · Harmony {hostHarmony} · Ring {hostRing}/{HarmonyRingDetector.MinRingSize}";
+                oppLine.text =
+                    $"Opponent  {oppScore} pts · Harmony {oppHarmony} · Ring {oppRing}/{HarmonyRingDetector.MinRingSize}";
+            }
 
             GameCoach.Instance?.EvaluateHudState(current, humanTurn);
             MaybeShowHotseatScrim(current, GameManager.Instance.GetTurnNumber());
@@ -849,6 +888,12 @@ namespace PaiSho.Game
         {
             if (echoSheet == null || EchoTileManager.Instance == null)
                 return;
+
+            if (!MatchRules.HouseExtrasEnabled)
+            {
+                echoSheet.gameObject.SetActive(false);
+                return;
+            }
 
             bool show = EchoTileManager.Instance.HasPendingEchoChoice;
             echoSheet.gameObject.SetActive(show);
@@ -998,10 +1043,12 @@ namespace PaiSho.Game
 
         private static string BuildContextMessage(Player current)
         {
-            if (EchoTileManager.Instance != null && EchoTileManager.Instance.HasPendingEchoChoice)
+            bool houseExtras = MatchRules.HouseExtrasEnabled;
+
+            if (houseExtras && EchoTileManager.Instance != null && EchoTileManager.Instance.HasPendingEchoChoice)
                 return "Choose which Ghost Echo flower to summon.";
 
-            if (GameManager.Instance != null && GameManager.Instance.PendingBonusMove)
+            if (houseExtras && GameManager.Instance != null && GameManager.Instance.PendingBonusMove)
                 return "Extra Move active — move a second tile.";
 
             if (GameStateManager.Instance != null && GameStateManager.Instance.IsSpringPhase())
@@ -1034,10 +1081,10 @@ namespace PaiSho.Game
             if (HandTrayController.Instance != null && HandTrayController.Instance.IsDragging)
                 return "Release to place from your rack.";
 
-            if (GameInputController.Instance?.MomentumMode == MomentumSpendMode.Revive)
+            if (houseExtras && GameInputController.Instance?.MomentumMode == MomentumSpendMode.Revive)
                 return "Select a wilted tile to revive (costs 1 Momentum).";
 
-            if (GameInputController.Instance?.MomentumMode == MomentumSpendMode.Freeze)
+            if (houseExtras && GameInputController.Instance?.MomentumMode == MomentumSpendMode.Freeze)
                 return "Select a tile to Freeze wilt for a turn (costs 1 Momentum).";
 
             int hostRing = HarmonyRingDetector.GetRingProgress(Player.Host);
@@ -1050,19 +1097,22 @@ namespace PaiSho.Game
             if (oppRing >= threat)
                 return "Computer is one harmony from a winning ring — disrupt it!";
 
-            int momentum = MomentumManager.Instance != null ? MomentumManager.Instance.GetMomentum(current) : 0;
-            int echoPts = EchoTileManager.Instance != null ? EchoTileManager.Instance.GetRevivalPoints(current) : 0;
-            if (momentum > 0)
-                return $"You have {momentum} Momentum — tap Extra Move for a second move, or Revive / Freeze.";
-            if (echoPts > 0)
-                return $"Echo {echoPts}/10 — at 10 you choose a Ghost flower.";
-
-            int wiltedCount = CountWiltedTiles(current);
-            if (wiltedCount > 0)
+            if (houseExtras)
             {
-                return wiltedCount == 1
-                    ? "One of your tiles is wilting — Revive or Freeze it before it fades."
-                    : $"{wiltedCount} of your tiles are wilting — Revive or Freeze them before they fade.";
+                int momentum = MomentumManager.Instance != null ? MomentumManager.Instance.GetMomentum(current) : 0;
+                int echoPts = EchoTileManager.Instance != null ? EchoTileManager.Instance.GetRevivalPoints(current) : 0;
+                if (momentum > 0)
+                    return $"You have {momentum} Momentum — tap Extra Move for a second move, or Revive / Freeze.";
+                if (echoPts > 0)
+                    return $"Echo {echoPts}/10 — at 10 you choose a Ghost flower.";
+
+                int wiltedCount = CountWiltedTiles(current);
+                if (wiltedCount > 0)
+                {
+                    return wiltedCount == 1
+                        ? "One of your tiles is wilting — Revive or Freeze it before it fades."
+                        : $"{wiltedCount} of your tiles are wilting — Revive or Freeze them before they fade.";
+                }
             }
 
             if (!GameManager.Instance.HasLegalActions(current))
