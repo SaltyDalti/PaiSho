@@ -31,9 +31,12 @@ namespace PaiSho.Domain
     /// </summary>
     public static class CaptureRules
     {
-        /// <summary>Boat and Knotweed are immune during Summer.</summary>
+        /// <summary>Boat and Knotweed are immune during Summer (house extras only).</summary>
         public static bool CanBeCaptured(PieceType type, GardenSeason season)
         {
+            if (!MatchRules.HouseExtrasEnabled)
+                return true;
+
             if (season == GardenSeason.Summer
                 && (type == PieceType.Boat || type == PieceType.Knotweed))
             {
@@ -46,9 +49,13 @@ namespace PaiSho.Domain
         /// <summary>
         /// Autumn host-side flowers resist disharmony effects (see Piece.CanBeDisharmonized).
         /// Not currently applied by CaptureManager; exposed for shared rules/tests.
+        /// Parked when house extras are off.
         /// </summary>
         public static bool CanBeDisharmonized(PieceType type, GardenSeason season)
         {
+            if (!MatchRules.HouseExtrasEnabled)
+                return true;
+
             if (season == GardenSeason.Autumn
                 && (type == PieceType.Rose
                     || type == PieceType.Chrysanthemum

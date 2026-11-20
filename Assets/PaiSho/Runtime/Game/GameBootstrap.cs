@@ -2,6 +2,7 @@ using System.Collections;
 using UnityEngine;
 using PaiSho;
 using PaiSho.Board;
+using PaiSho.Domain;
 
 namespace PaiSho.Game
 {
@@ -22,8 +23,13 @@ namespace PaiSho.Game
 
         private void Awake()
         {
+            // Portfolio default: core rules only. Flip MatchRules.EnableHouseExtras()
+            // (or GameSession.HouseExtrasEnabled = true) to restore seasons/momentum/wilt/echo.
+            MatchRules.UsePortfolioCore();
+
             EnsureManager<GameStateManager>();
             EnsureManager<GameManager>();
+            // Season / Momentum / Echo managers stay created so house extras can turn back on without scene work.
             EnsureManager<SeasonManager>();
             EnsureManager<ReserveManager>();
             EnsureManager<PlacementValidator>();

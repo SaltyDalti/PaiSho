@@ -26,6 +26,8 @@ namespace PaiSho.Rules.Tests
         [Fact]
         public void ScorePiece_AddsInSeasonAndRevivalAndBloom()
         {
+            using var _ = new HouseExtrasScope(enabled: true);
+
             // Winter lotus: base+1 (winter), +1 in-season, +2 blooming = 1+1+1+2 = 5
             var lotus = Host(PieceType.Lotus, blooming: true);
             Assert.Equal(5, ScoringRules.ScorePiece(lotus, GardenSeason.Winter));

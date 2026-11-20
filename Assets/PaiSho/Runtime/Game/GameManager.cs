@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using PaiSho;
 using PaiSho.Board;
+using PaiSho.Domain;
 using PaiSho.Pieces;
 
 namespace PaiSho.Game
@@ -201,6 +202,9 @@ namespace PaiSho.Game
 
         public bool CanGrantExtraMove(Player player)
         {
+            if (!MatchRules.HouseExtrasEnabled)
+                return false;
+
             if (GameStateManager.Instance == null || MomentumManager.Instance == null ||
                 MovementManager.Instance == null)
                 return false;

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using PaiSho.Board;
+using PaiSho.Domain;
 using PaiSho.Pieces;
 
 namespace PaiSho.Game
@@ -39,6 +40,9 @@ namespace PaiSho.Game
         public void AdvanceTurn()
         {
             SeasonJustRotated = false;
+            if (!MatchRules.HouseExtrasEnabled)
+                return;
+
             turnCounter++;
             if (turnCounter >= turnsPerSeason)
             {
@@ -50,6 +54,9 @@ namespace PaiSho.Game
 
         public void RotateSeason()
         {
+            if (!MatchRules.HouseExtrasEnabled)
+                return;
+
             currentSeason = (Season)(((int)currentSeason + 1) % 4);
             Debug.Log($">>> The season has changed to: {currentSeason}");
         }
@@ -78,6 +85,9 @@ namespace PaiSho.Game
 
         public bool IsInSeason(PieceType type)
         {
+            if (!MatchRules.HouseExtrasEnabled)
+                return false;
+
             switch (currentSeason)
             {
                 case Season.Spring:
@@ -95,6 +105,9 @@ namespace PaiSho.Game
 
         public bool EvaluateSeasonalBonuses(Player player, List<Piece> pieces)
         {
+        if (!MatchRules.HouseExtrasEnabled)
+            return false;
+
         int harmoniesThisTurn = 0;
         int wiltedRevived = 0;
         int movedTiles = MovementManager.Instance.GetMovedTileCount();

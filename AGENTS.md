@@ -35,4 +35,4 @@ Unity EditMode playtests still require the editor on a desktop machine.
 
 ## Current maturity
 
-Playable title → spring → play → AI/hotseat → ring/forfeit loop. Domain grafted for headless rules tests; several Unity managers still own match mutation.
+Playable title → spring opening → play → AI/hotseat → ring/forfeit loop. Portfolio default parks seasons/momentum/wilt/echo behind `MatchRules.HouseExtrasEnabled`. Domain grafted for headless rules tests; several Unity managers still own match mutation.

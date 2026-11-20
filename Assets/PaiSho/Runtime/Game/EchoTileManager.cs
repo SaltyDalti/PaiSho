@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using PaiSho.Board;
+using PaiSho.Domain;
 using PaiSho.Pieces;
 
 namespace PaiSho.Game
@@ -42,7 +43,9 @@ namespace PaiSho.Game
 
         public void AddRevivalPoints(Player player, int amount)
         {
-            if (amount <= 0) return;
+            if (!MatchRules.HouseExtrasEnabled || amount <= 0)
+                return;
+
             revivalPoints[player] += amount;
 
             DebugLogger.Log($">>> {player} earned {amount} revival point(s). Total: {revivalPoints[player]}");
@@ -68,6 +71,9 @@ namespace PaiSho.Game
         /// <summary>Human UI confirms an Echo type while a choice is pending.</summary>
         public bool ConfirmPendingEcho(PieceType type)
         {
+            if (!MatchRules.HouseExtrasEnabled)
+                return false;
+
             if (!PendingEchoPlayer.HasValue)
                 return false;
 

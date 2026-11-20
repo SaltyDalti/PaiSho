@@ -1,4 +1,5 @@
 using UnityEngine;
+using PaiSho.Domain;
 
 namespace PaiSho.Game
 {
@@ -14,6 +15,16 @@ namespace PaiSho.Game
 
         public static bool MatchStarted { get; private set; }
         public static bool ShowTitleOnBoot { get; set; } = true;
+
+        /// <summary>
+        /// Portfolio default is false (core rules only). Set true to restore seasons,
+        /// momentum, wilt, and echo — see <see cref="MatchRules"/>.
+        /// </summary>
+        public static bool HouseExtrasEnabled
+        {
+            get => MatchRules.HouseExtrasEnabled;
+            set => MatchRules.HouseExtrasEnabled = value;
+        }
 
         public static float MasterVolume
         {

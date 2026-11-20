@@ -56,9 +56,22 @@ namespace PaiSho.Domain
             (GardenSeason)(((int)season + 1) % 4);
 
         public static bool ShouldRotate(int turnCounterAfterIncrement) =>
-            turnCounterAfterIncrement >= TurnsPerSeason;
+            MatchRules.HouseExtrasEnabled && turnCounterAfterIncrement >= TurnsPerSeason;
 
+        /// <summary>
+        /// Canonical in-season membership. When house extras are parked, always false
+        /// so movement/score callers stay neutral without deleting season tables.
+        /// </summary>
         public static bool IsInSeason(PieceType type, GardenSeason season)
+        {
+            if (!MatchRules.HouseExtrasEnabled)
+                return false;
+
+            return IsInSeasonCanonical(type, season);
+        }
+
+        /// <summary>Season membership table used when house extras are on (and for tests of the calendar).</summary>
+        public static bool IsInSeasonCanonical(PieceType type, GardenSeason season)
         {
             switch (season)
             {
@@ -84,7 +97,10 @@ namespace PaiSho.Domain
         /// <summary>Base movement range multiplier used by MovementManager (1 normal, 2 in-season spring flowers).</summary>
         public static int ModifiedMovementRange(PieceType type, GardenSeason season)
         {
-            if (season == GardenSeason.Spring && IsInSeason(type, GardenSeason.Spring))
+            if (!MatchRules.HouseExtrasEnabled)
+                return 1;
+
+            if (season == GardenSeason.Spring && IsInSeasonCanonical(type, GardenSeason.Spring))
                 return 2;
             return 1;
         }
@@ -92,7 +108,10 @@ namespace PaiSho.Domain
         /// <summary>Winter accents/lotus get +1 to their base point value.</summary>
         public static int BaseScoreValue(PieceType type, GardenSeason season, int pointValue)
         {
-            if (season == GardenSeason.Winter && IsInSeason(type, GardenSeason.Winter))
+            if (!MatchRules.HouseExtrasEnabled)
+                return pointValue;
+
+            if (season == GardenSeason.Winter && IsInSeasonCanonical(type, GardenSeason.Winter))
                 return pointValue + 1;
             return pointValue;
         }
@@ -146,6 +165,9 @@ namespace PaiSho.Domain
 
         public static SeasonalBonusResult EvaluateBonuses(SeasonalTurnContext ctx)
         {
+            if (!MatchRules.HouseExtrasEnabled)
+                return new SeasonalBonusResult(0, 0);
+
             int scoreBonus = 0;
             int momentumBonus = 0;
 

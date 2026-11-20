@@ -16,7 +16,8 @@ Runtime chain:
 
 1. Scene loads → `GameBootstrap` auto-creates (`[RuntimeInitializeOnLoadMethod(AfterSceneLoad)]`).
 2. `Awake` ensures all managers, including `TitleMenu` and `GameUI`.
-3. `Start` coroutine: board setup → `TitleMenu.WaitUntilMatchRequested()` → apply `GameSession.AiEnabled` → spring prep → first AI turn if needed.
+3. `Start` coroutine: board setup → `TitleMenu.WaitUntilMatchRequested()` → apply `GameSession.AiEnabled` → spring opening prep → first AI turn if needed.
+   - **Portfolio default:** `MatchRules.HouseExtrasEnabled` is false (core place/move/harmony/capture/ring/forfeit). Seasons calendar, momentum, wilt, and echo stay in code but are parked — call `MatchRules.EnableHouseExtras()` or set `GameSession.HouseExtrasEnabled = true` to restore.
 4. Title is a **HUD overlay** on GamePlay (`TitleMenu`), not a scene load.
 5. New Game / AI / hotseat dismisses the overlay via `GameSession.MarkMatchStarted()`.
 6. Headless / self-play skips the title block when `HeadlessActionExecutor.IsActive`.
@@ -69,10 +70,10 @@ Addressables changes bake pipelines, first-load latency, and editor workflows. G
 
 ## Pre-ship checklist (light)
 
-- [ ] Play Title → New Game (AI) → spring → Play → ring or forfeit → Play Again
+- [ ] Play Title → New Game (AI) → spring opening → Play → ring or forfeit → Play Again (core rules; no seasons/momentum HUD)
 - [ ] Confirm self-play digests show Host/Opponent winners (not Incomplete) after rings
 - [ ] Audio mute / volume from title Settings
-- [ ] Mobile touch: drag place, drag move, Echo chooser, End Turn
+- [ ] Mobile touch: drag place, drag move, End Turn (Echo chooser only when house extras on)
 - [ ] Build Readiness validator (`Pai Sho → Build Readiness` if present)
 - [ ] `.gitignore` excludes `Logs/`, Library, local digests
 - [ ] Optional: sync Desktop working tree → T5 backup when structure is stable

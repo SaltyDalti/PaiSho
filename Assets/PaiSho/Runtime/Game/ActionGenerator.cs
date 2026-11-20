@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using PaiSho.Board;
+using PaiSho.Domain;
 using PaiSho.Pieces;
 
 namespace PaiSho.Game
@@ -112,6 +113,9 @@ namespace PaiSho.Game
 
         private static void AddMomentumActions(Player player, List<GameAction> actions)
         {
+            if (!MatchRules.HouseExtrasEnabled)
+                return;
+
             if (MovementManager.Instance == null || MomentumManager.Instance == null)
                 return;
 

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using PaiSho.Board;
+using PaiSho.Domain;
 using PaiSho.Pieces;
 
 namespace PaiSho.Game
@@ -32,6 +33,9 @@ namespace PaiSho.Game
 
         public void AwardMomentum(Player player, string reason)
         {
+            if (!MatchRules.HouseExtrasEnabled)
+                return;
+
             if (!momentumTokens.ContainsKey(player))
                 momentumTokens[player] = 0;
 
@@ -67,6 +71,9 @@ namespace PaiSho.Game
 
         public bool TrySpendMomentum(Player player, string reason)
         {
+            if (!MatchRules.HouseExtrasEnabled)
+                return false;
+
             if (momentumTokens[player] > 0)
             {
                 momentumTokens[player]--;
@@ -80,6 +87,9 @@ namespace PaiSho.Game
 
         public bool SpendReviveTile(Player player, Piece piece)
         {
+            if (!MatchRules.HouseExtrasEnabled)
+                return false;
+
             if (!TrySpendMomentum(player, "Revive Wilted Tile"))
                 return false;
 
@@ -97,6 +107,9 @@ namespace PaiSho.Game
 
         public bool SpendFreezeWilt(Player player, Piece piece)
         {
+            if (!MatchRules.HouseExtrasEnabled)
+                return false;
+
             if (!TrySpendMomentum(player, "Freeze Wilt Decay"))
                 return false;
 
@@ -109,16 +122,25 @@ namespace PaiSho.Game
 
         public bool HasMomentum(Player player)
         {
+            if (!MatchRules.HouseExtrasEnabled)
+                return false;
+
             return momentumTokens.ContainsKey(player) && momentumTokens[player] > 0;
         }
 
         public int GetMomentum(Player player)
         {
+            if (!MatchRules.HouseExtrasEnabled)
+                return 0;
+
             return momentumTokens[player];
         }
 
         public bool SpendMomentum(Player player)
         {
+            if (!MatchRules.HouseExtrasEnabled)
+                return false;
+
             if (momentumTokens[player] > 0)
             {
                 momentumTokens[player]--;
@@ -130,7 +152,9 @@ namespace PaiSho.Game
 
         public void AwardBonus(Player player, int count)
         {
-            if (count <= 0) return;
+            if (!MatchRules.HouseExtrasEnabled || count <= 0)
+                return;
+
             if (!momentumTokens.ContainsKey(player))
                 momentumTokens[player] = 0;
 
@@ -149,6 +173,9 @@ namespace PaiSho.Game
 
         public void EvaluateTurnBonuses(Player player, List<Piece> allPieces)
         {
+            if (!MatchRules.HouseExtrasEnabled)
+                return;
+
             int harmonyCount = 0;
             bool awardedSeasonal = false;
 
