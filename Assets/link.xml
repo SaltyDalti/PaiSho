@@ -1,0 +1,15 @@
+<!--
+  WebGL + stripEngineCode drops collider types that are only pulled in via
+  GameObject.CreatePrimitive (Cylinder → CapsuleCollider, Sphere → SphereCollider,
+  Plane → MeshCollider). Without these, CreatePrimitive fails at runtime and the
+  board / table / markers never appear. BoxCollider is also kept — we AddComponent it
+  for picks, but preserve it explicitly for safety.
+-->
+<linker>
+  <assembly fullname="UnityEngine.PhysicsModule">
+    <type fullname="UnityEngine.BoxCollider" preserve="all" />
+    <type fullname="UnityEngine.CapsuleCollider" preserve="all" />
+    <type fullname="UnityEngine.SphereCollider" preserve="all" />
+    <type fullname="UnityEngine.MeshCollider" preserve="all" />
+  </assembly>
+</linker>
