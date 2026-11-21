@@ -439,8 +439,12 @@ namespace PaiSho
             if (shaderName.Contains("Error") || shaderName.Contains("InternalError"))
                 return true;
 
+            // shader.isSupported can throw / blow the JS stack on Safari WebGL when
+            // combined with exception trampolines (invoke_iii). Skip the probe there.
+#if !UNITY_WEBGL || UNITY_EDITOR
             if (!material.shader.isSupported)
                 return true;
+#endif
 
             if (shaderName.StartsWith("Universal Render Pipeline/"))
                 return false;
