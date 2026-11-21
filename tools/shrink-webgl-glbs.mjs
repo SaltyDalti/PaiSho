@@ -74,15 +74,34 @@ async function main() {
   );
   await MeshoptSimplifier.ready;
 
-  const jobs = [
-    ['Assets/Resources/Board/Board.glb', 1024, 0.15, 0.02],
+  // Board.glb: texture resize only. Mesh simplify/weld broke gate-pitch measurement
+  // so CellSpacing no longer matched the board (tiles/points drifted).
+  const textureOnly = [['Assets/Resources/Board/Board.glb', 2048]];
+  const meshJobs = [
     ['Assets/Resources/Board/PlayerStand.glb', 512, 0.08, 0.04],
     ...readdirSync(join(root, 'Assets/Resources/PieceVisuals'))
       .filter((f) => f.endsWith('.glb'))
       .map((f) => [`Assets/Resources/PieceVisuals/${f}`, 512, 0.1, 0.025]),
   ];
 
-  for (const [rel, texMax, ratio, error] of jobs) {
+  for (const [rel, texMax] of textureOnly) {
+    const path = join(root, rel);
+    const tmp = path + '.tmp.glb';
+    execSync(
+      `npx --yes @gltf-transform/cli@4 resize "${path}" "${tmp}" --width ${texMax} --height ${texMax}`,
+      { stdio: 'pipe' },
+    );
+    const io = new NodeIO().registerExtensions(ALL_EXTENSIONS);
+    const doc = await io.read(tmp);
+    await doc.transform(dedup(), prune());
+    await io.write(path, doc);
+    try {
+      unlinkSync(tmp);
+    } catch {}
+    console.log(rel, `(tex-only) ${(statSync(path).size / 1e6).toFixed(2)} MB`);
+  }
+
+  for (const [rel, texMax, ratio, error] of meshJobs) {
     const path = join(root, rel);
     const tmp = path + '.tmp.glb';
     execSync(
