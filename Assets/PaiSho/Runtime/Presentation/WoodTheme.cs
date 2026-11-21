@@ -2857,7 +2857,13 @@ namespace PaiSho
             GameObject probe = Object.Instantiate(prefab);
             try
             {
-                if (!ContainsBoardPart(probe, "BoardLines"))
+                // WebGL builds may omit BoardLines (runtime points draw the grid).
+                // Gate meshes are required for CellSpacing calibration.
+                bool hasGates = ContainsBoardPart(probe, "GateHome")
+                    && ContainsBoardPart(probe, "GateForeign");
+                bool hasLinesOrBoard = ContainsBoardPart(probe, "BoardLines")
+                    || ContainsBoardPart(probe, "Board");
+                if (!hasGates || !hasLinesOrBoard)
                     return false;
 
                 visual = prefab;
