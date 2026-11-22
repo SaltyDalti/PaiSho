@@ -105,6 +105,55 @@ function stripGardenNodes(doc) {
   console.log(`stripped ${remove.length} Garden* nodes`);
 }
 
+/** Face-area-weighted vertex normals. Keeps indices (unlike normals({overwrite})). */
+function computeVertexNormals(doc, prim) {
+  const pos = prim.getAttribute('POSITION');
+  const idx = prim.getIndices();
+  if (!pos || !idx) return;
+  const p = pos.getArray();
+  const ix = idx.getArray();
+  const nrm = new Float32Array(pos.getCount() * 3);
+  for (let t = 0; t < ix.length; t += 3) {
+    const i0 = ix[t],
+      i1 = ix[t + 1],
+      i2 = ix[t + 2];
+    const ax = p[i0 * 3],
+      ay = p[i0 * 3 + 1],
+      az = p[i0 * 3 + 2];
+    const bx = p[i1 * 3],
+      by = p[i1 * 3 + 1],
+      bz = p[i1 * 3 + 2];
+    const cx = p[i2 * 3],
+      cy = p[i2 * 3 + 1],
+      cz = p[i2 * 3 + 2];
+    const ux = bx - ax,
+      uy = by - ay,
+      uz = bz - az;
+    const vx = cx - ax,
+      vy = cy - ay,
+      vz = cz - az;
+    let nx = uy * vz - uz * vy,
+      ny = uz * vx - ux * vz,
+      nz = ux * vy - uy * vx;
+    const len = Math.hypot(nx, ny, nz) || 1;
+    nx /= len;
+    ny /= len;
+    nz /= len;
+    for (const i of [i0, i1, i2]) {
+      nrm[i * 3] += nx;
+      nrm[i * 3 + 1] += ny;
+      nrm[i * 3 + 2] += nz;
+    }
+  }
+  for (let i = 0; i < pos.getCount(); i++) {
+    const len = Math.hypot(nrm[i * 3], nrm[i * 3 + 1], nrm[i * 3 + 2]) || 1;
+    nrm[i * 3] /= len;
+    nrm[i * 3 + 1] /= len;
+    nrm[i * 3 + 2] /= len;
+  }
+  prim.setAttribute('NORMAL', doc.createAccessor().setType('VEC3').setArray(nrm));
+}
+
 async function meshSimplify(doc, { fns, MeshoptSimplifier }, ratio, error) {
   for (const mesh of doc.getRoot().listMeshes()) {
     for (const prim of mesh.listPrimitives()) {
@@ -124,6 +173,14 @@ async function meshSimplify(doc, { fns, MeshoptSimplifier }, ratio, error) {
     // it de-indexes TRIANGLES meshes (observed on PlayerStand).
     fns.prune(),
   );
+
+  // glTFast rejects Position+Tangent without NORMAL when a material needs tangents
+  // (normal map) — BufferMainInvalidType. Restore normals without de-indexing.
+  for (const mesh of doc.getRoot().listMeshes()) {
+    for (const prim of mesh.listPrimitives()) {
+      computeVertexNormals(doc, prim);
+    }
+  }
 }
 
 async function resizeGlb(path, texMax) {
