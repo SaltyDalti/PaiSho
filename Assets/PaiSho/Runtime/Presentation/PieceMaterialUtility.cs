@@ -78,10 +78,19 @@ namespace PaiSho
             if (root == null)
                 return;
 
-            Material hostBodyTemplate = FindFaceBodyTemplate(root) ?? FindThemedMaterial(root, "ceramic", "stone", "marble", "hostbody");
-            Material opponentBodyTemplate = FindTileBodyTemplate(root) ?? FindThemedMaterial(root, "terracotta", "terracota", "opponentbody");
+            // Body albedo must come from the tile body, not the flower face. Using the face
+            // template for Host painted engraving maps onto the disc and read as the wrong
+            // tray color until a board re-seat refreshed lighting (HJ-30).
+            Material bodyAlbedo = FindTileBodyTemplate(root)
+                ?? FindThemedMaterial(root, "ceramic", "stone", "marble", "hostbody", "terracotta", "terracota", "opponentbody");
+            Material hostAccent = FindThemedMaterial(root, "ceramic", "stone", "marble", "hostbody");
+            Material opponentAccent = FindThemedMaterial(root, "terracotta", "terracota", "opponentbody");
             Color bodyColor = WoodTheme.GetOwnerBodyColor(owner, type);
             float smoothness = WoodTheme.GetOwnerBodySmoothness(owner);
+
+            bool distinctTemplates = hostAccent != null &&
+                                     opponentAccent != null &&
+                                     hostAccent != opponentAccent;
 
             foreach (Renderer renderer in root.GetComponentsInChildren<Renderer>(true))
             {
@@ -91,13 +100,13 @@ namespace PaiSho
                 if (IsInlayRenderer(renderer))
                     continue; // keep authored face/inlay colors from Blender export
 
-                Material bodyTemplate = owner == Player.Host ? hostBodyTemplate : opponentBodyTemplate;
+                Material bodyTemplate = bodyAlbedo;
                 if (bodyTemplate == null)
-                    bodyTemplate = opponentBodyTemplate ?? hostBodyTemplate;
-
-                bool distinctTemplates = hostBodyTemplate != null &&
-                                         opponentBodyTemplate != null &&
-                                         hostBodyTemplate != opponentBodyTemplate;
+                {
+                    bodyTemplate = owner == Player.Host
+                        ? hostAccent ?? opponentAccent
+                        : opponentAccent ?? hostAccent;
+                }
 
                 if (bodyTemplate != null && HasAlbedoTexture(bodyTemplate))
                 {
@@ -319,18 +328,17 @@ namespace PaiSho
             if (objectName.IndexOf("face", System.StringComparison.OrdinalIgnoreCase) >= 0)
                 return true;
 
+            // Engraved flower faces only — do NOT treat hostbody_ceramic as an inlay.
+            // That material is the Host tile body; skipping it left WebGL Host tray tiles on
+            // the white ToUrpMaterial base tint until board lighting hid the bug (HJ-30).
             foreach (Material material in renderer.sharedMaterials)
             {
                 if (material == null)
                     continue;
 
                 string materialName = material.name.ToLowerInvariant();
-                if (materialName.Contains("hostbody_ceramic") ||
-                    materialName.Contains("engrav") ||
-                    materialName.Contains("hj"))
-                {
+                if (materialName.Contains("engrav") || materialName.Contains("hj"))
                     return true;
-                }
             }
 
             return false;

@@ -655,7 +655,13 @@ namespace PaiSho.Game
                 if (locked)
                     ApplyLockedLook(visual);
                 else if (handle.IsSpringDraw)
+                {
+                    // Bud emission is flower-only; re-assert owner body tint afterward so Host
+                    // ceramic cannot stay painted from SampleTile / face-template leftovers.
                     PieceStateAnimator.ApplySpringBudLook(visual, type, tray.Owner);
+                    PieceMaterialUtility.ApplyPieceTheme(visual, type, tray.Owner);
+                    PieceStateAnimator.ApplySpringBudLook(visual, type, tray.Owner);
+                }
 
                 tray.Handles.Add(handle);
             }
