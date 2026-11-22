@@ -616,6 +616,30 @@ namespace PaiSho.Board
             setup?.DiscoverTrayReferences();
         }
 
+        private static void DestroyDetachedHandTrays(HandTrayPose hostPose, HandTrayPose opponentPose)
+        {
+            // Rename before Destroy so same-frame Discover/Find won't treat pending
+            // destroys as live HandTray* roots (Destroy is end-of-frame).
+            if (hostPose.Valid && hostPose.Tray != null)
+            {
+                hostPose.Tray.name = "HandTrayHost_Obsolete";
+                hostPose.Tray.gameObject.SetActive(false);
+                Object.Destroy(hostPose.Tray.gameObject);
+            }
+
+            if (opponentPose.Valid && opponentPose.Tray != null)
+            {
+                opponentPose.Tray.name = "HandTrayOpponent_Obsolete";
+                opponentPose.Tray.gameObject.SetActive(false);
+                Object.Destroy(opponentPose.Tray.gameObject);
+            }
+
+            var setup = GameBoardSetup.Instance != null
+                ? GameBoardSetup.Instance
+                : Object.FindAnyObjectByType<GameBoardSetup>();
+            setup?.DiscoverTrayReferences();
+        }
+
         private static void ApplyHandTrayPose(HandTrayPose pose, Transform standRoot)
         {
             if (!pose.Valid || pose.Tray == null || standRoot == null)
@@ -658,6 +682,16 @@ namespace PaiSho.Board
             {
                 // Desktop-tuned knobs first; gate pitch then locks CellSpacing to this GLB.
                 BoardAlignmentDefaults.ApplyTo(boardLayout);
+#if UNITY_WEBGL && !UNITY_EDITOR
+                // Desktop GridSpacingScale (≈0.895) shrinks CoordinateToWorld vs the Resources
+                // Board.glb gate pitch; FineAlign only translates, so stands/trays drift ~cells
+                // off the carved board (HJ-26 live: southΔ=northΔ≈4.5). Match mesh 1:1 on WebGL.
+                boardLayout.SetGridSpacingScale(1f);
+                boardLayout.SetTunerOverlay(1f, Vector2.zero, boardLayout.PointHeightOffset);
+                // CreateModelBoardSurface instances Board at Y=90; keep layout NS on the same
+                // world axis or FineAlign's average translation is a no-op and trays float.
+                boardLayout.SetGridYawDegrees(-90f);
+#endif
 
                 var modelSurface = WoodTheme.CreateModelBoardSurface(
                     boardLayout, boardModel, boardSource, out float gridSpan, out float surfaceY);
@@ -675,8 +709,8 @@ namespace PaiSho.Board
                 {
                     // Calibrate → FineAlign → remeasure → FineAlign again so CoordinateToWorld
                     // stays locked to GateForeign/GateHome after the final CellSpacing write.
-                    // WebGL: FineAlignBoardModel + EnsureBoardModelMaterialTweaks are no-ops
-                    // (HJ-25 Safari invoke_iii); gate-pitch from CreateModelBoardSurface stands.
+                    // HJ-26: FineAlign + material tweaks run on WebGL again (tray seating +
+                    // GardenLight/Dark swap). EnsureMaterials stays skipped for Safari.
                     WoodTheme.FineAlignBoardModel(placedModel.gameObject, boardLayout);
                     if (WoodTheme.TryMeasureNineteenByNineteenGridSpan(placedModel.gameObject, out float span))
                     {
@@ -692,9 +726,7 @@ namespace PaiSho.Board
                     // CreateModelBoardSurface already tweaked materials; re-apply after align so
                     // neutral tiling / lighten / Light↔Dark swap always win on Resources path.
                     WoodTheme.EnsureBoardModelMaterialTweaks(boardLayout, placedModel.gameObject);
-#if !UNITY_WEBGL || UNITY_EDITOR
                     WoodTheme.LogGateLayoutAlignment(boardLayout, placedModel.gameObject);
-#endif
                     DebugLogger.Log(
                         $"Resources board seated: spacing={boardLayout.CellSpacing:F3}, " +
                         $"surfaceY={boardLayout.TileHeight:F3}, span={boardLayout.GridSpan:F3}");
@@ -706,7 +738,14 @@ namespace PaiSho.Board
                     opponentPlayerStand = WoodTheme.SpawnPlayerStand(boardLayout, boardTransform, Player.Opponent);
                     RefreshPlayerStand(Player.Host);
                     RefreshPlayerStand(Player.Opponent);
+#if UNITY_WEBGL && !UNITY_EDITOR
+                    // Scene HandTray* local poses were authored against the old stand mesh.
+                    // Shrunk Resources PlayerStand.glb no longer matches — drop them and let
+                    // EnsureHandTrayRoots bake Slot_* onto the live stand (HJ-26).
+                    DestroyDetachedHandTrays(hostTrayPose, opponentTrayPose);
+#else
                     ReattachAuthoredHandTrays(hostTrayPose, opponentTrayPose);
+#endif
                 }
             }
             else if (boardLayout.UsePhotoBoard && BoardTextureLoader.IsAvailable())

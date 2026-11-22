@@ -257,11 +257,17 @@ namespace PaiSho.Game
             if (layout == null)
                 return false;
 
+            // Only bake onto BoardManager-spawned Resources stands. Scene PrefabInstance
+            // stands are destroyed on the WebGL rebuild path; baking onto them during the
+            // deferred-title window produced orphan weird racks (HJ-26).
+            if (BoardManager.Instance == null)
+                return false;
+
             bool baked = false;
 
             if (!IsLiveTrayRoot(hostTrayRoot, HostTrayName))
             {
-                Transform stand = ResolvePlayerStandRoot(Player.Host);
+                Transform stand = BoardManager.Instance.GetPlayerStandTransform(Player.Host);
                 Transform tray = HandTrayLayoutUtility.CreateBakedTray(
                     stand, layout, Player.Host, HostTrayName, bakeSlotMarkers: true);
                 if (tray != null)
@@ -273,7 +279,7 @@ namespace PaiSho.Game
 
             if (!IsLiveTrayRoot(opponentTrayRoot, OpponentTrayName))
             {
-                Transform stand = ResolvePlayerStandRoot(Player.Opponent);
+                Transform stand = BoardManager.Instance.GetPlayerStandTransform(Player.Opponent);
                 Transform tray = HandTrayLayoutUtility.CreateBakedTray(
                     stand, layout, Player.Opponent, OpponentTrayName, bakeSlotMarkers: true);
                 if (tray != null)
@@ -288,18 +294,18 @@ namespace PaiSho.Game
 
         private Transform ResolvePlayerStandRoot(Player player)
         {
+            if (BoardManager.Instance != null)
+            {
+                Transform managed = BoardManager.Instance.GetPlayerStandTransform(player);
+                if (managed != null)
+                    return managed;
+            }
+
             string standName = player == Player.Host ? "PlayerStand" : "PlayerStandOpponent";
 
             Transform stand = FindChildInHierarchy(standName);
             if (stand != null)
                 return stand;
-
-            if (BoardManager.Instance != null)
-            {
-                stand = BoardManager.Instance.GetPlayerStandTransform(player);
-                if (stand != null)
-                    return stand;
-            }
 
             var named = GameObject.Find(standName);
             return named != null ? named.transform : null;

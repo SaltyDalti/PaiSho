@@ -146,20 +146,14 @@ namespace PaiSho.Game
             if (current != null && current.name == trayName)
                 return current;
 
-            // Prefer baking onto the player stand when board setup exists.
+            // Prefer baking onto the Resources PlayerStand after board init — not onto the
+            // scene PrefabInstance stands that WebGL destroys on New Game (deferred Board path).
             BoardLayout bakeLayout = layout != null ? layout : FindAnyObjectByType<BoardLayout>();
-            if (setup != null && bakeLayout != null)
+            Transform stand = BoardManager.Instance != null
+                ? BoardManager.Instance.GetPlayerStandTransform(player)
+                : null;
+            if (setup != null && bakeLayout != null && stand != null)
             {
-                Transform stand = BoardManager.Instance != null
-                    ? BoardManager.Instance.GetPlayerStandTransform(player)
-                    : null;
-                if (stand == null)
-                {
-                    string standName = player == Player.Host ? "PlayerStand" : "PlayerStandOpponent";
-                    var standObject = GameObject.Find(standName);
-                    stand = standObject != null ? standObject.transform : null;
-                }
-
                 Transform baked = HandTrayLayoutUtility.CreateBakedTray(
                     stand, bakeLayout, player, trayName, bakeSlotMarkers: true);
                 if (baked != null)
@@ -461,8 +455,10 @@ namespace PaiSho.Game
             if (standTransform == null)
                 return false;
 
-            // Scene-authored trays under the stand keep their baked pose.
-            if (UsesSceneSlotMarkers(tray) || IsSceneAuthoredTray(tray))
+            // Desktop preserve: keep authored local pose under the scene stand.
+            // WebGL Resources PlayerStand (and shrunk PlayerStand.glb) no longer matches the
+            // scene-authored local pose — reseat to stand topCenter, but still use Slot_*.
+            if (IsDesktopPreservedTray(tray))
                 return BindStandAnchorFromSceneTray(tray, standTransform);
 
             if (!WoodTheme.TryGetPlayerStandAnchor(standTransform.gameObject, tray.Owner, out tray.StandAnchor))
@@ -473,12 +469,43 @@ namespace PaiSho.Game
             Bounds localBounds = tray.StandAnchor.LocalBounds;
 
             tray.Root.SetParent(stand, false);
+#if UNITY_WEBGL && !UNITY_EDITOR
+            // Crescent PlayerStand AABB center sits in the hollow — seat on the inner lip
+            // toward the board so spring tiles land on the rack, not the floor beside it.
+            if (layout != null &&
+                WoodTheme.TryGetPlayerStandMeshRenderer(standTransform.gameObject, out Renderer standRenderer))
+            {
+                Bounds world = standRenderer.bounds;
+                Vector3 towardBoard = layout.CoordinateToWorld(BoardUtils.MiddleGate) - world.center;
+                towardBoard.y = 0f;
+                if (towardBoard.sqrMagnitude < 0.0001f)
+                    towardBoard = -standTransform.forward;
+                towardBoard.Normalize();
+
+                // Crescent opens toward the board: AABB center sits in the hollow. Move
+                // away from the board to the AABB outer face (visible rim).
+                float inset = Mathf.Min(world.extents.x, world.extents.z) * 0.95f;
+                Vector3 seatWorld = world.center - towardBoard * inset;
+                seatWorld.y = world.max.y + layout.PieceSurfaceLift + 0.03f;
+                tray.Root.position = seatWorld;
+                tray.Root.rotation = Quaternion.LookRotation(-towardBoard, Vector3.up);
+            }
+            else
+            {
+                tray.Root.localPosition = new Vector3(
+                    localBounds.center.x,
+                    localBounds.max.y + layout.PieceSurfaceLift + 0.01f,
+                    localBounds.center.z);
+                tray.Root.localRotation = Quaternion.identity;
+            }
+#else
             Vector3 topCenter = new Vector3(
                 localBounds.center.x,
                 localBounds.max.y + layout.PieceSurfaceLift + 0.01f,
                 localBounds.center.z);
             tray.Root.localPosition = topCenter;
             tray.Root.localRotation = Quaternion.identity;
+#endif
 
             tray.DragSurfaceY = tray.Root.position.y + 0.05f;
             tray.DragPlane = new Plane(Vector3.up, new Vector3(0f, tray.DragSurfaceY, 0f));
@@ -487,9 +514,14 @@ namespace PaiSho.Game
 
         private void ApplyTrayTunerOffset(TrayBinding tray)
         {
-            if (tray.Root == null || UsesSceneSlotMarkers(tray) || IsSceneAuthoredTray(tray))
+            if (tray.Root == null || IsDesktopPreservedTray(tray))
                 return;
 
+#if UNITY_WEBGL && !UNITY_EDITOR
+            // Desktop TrayLocalOffset was authored in scene-stand space. Applied on top of
+            // Resources mesh topCenter it shoves spring tiles onto the floor beside the rack.
+            return;
+#else
             Vector3 offset;
             Vector3 euler;
             if (tunerPreviewActive && activeTuner != null)
@@ -507,6 +539,7 @@ namespace PaiSho.Game
             tray.Root.localRotation *= Quaternion.Euler(euler);
             tray.DragSurfaceY = tray.Root.position.y + 0.05f;
             tray.DragPlane = new Plane(Vector3.up, new Vector3(0f, tray.DragSurfaceY, 0f));
+#endif
         }
 
         private void PositionTrayFallback(TrayBinding tray)
@@ -680,7 +713,13 @@ namespace PaiSho.Game
             if (tunerPreviewActive && activeTuner != null)
                 return activeTuner.useManualSlotPositions;
 
+#if UNITY_WEBGL && !UNITY_EDITOR
+            // Manual Slot_* locals (±3) are pre-shrink stand space; on WebGL use the
+            // HasStandAnchor shelf axis so spring tiles sit on the live rack.
+            return false;
+#else
             return HandTrayAlignmentDefaults.UseManualSlotPositions;
+#endif
         }
 
         private Vector3 GetSlotPosition(int slotIndex, Player player)
@@ -1193,15 +1232,20 @@ namespace PaiSho.Game
 
         private bool UsesSceneSlotMarkers(TrayBinding tray)
         {
-            if (boardSetup == null)
-                boardSetup = FindAnyObjectByType<GameBoardSetup>();
+            if (tray.Root == null || !GameBoardSetup.HasBakedSlotMarkers(tray.Root))
+                return false;
 
-            return boardSetup != null
-                && boardSetup.PreserveSceneAuthored
-                && GameBoardSetup.HasBakedSlotMarkers(tray.Root);
+#if UNITY_WEBGL && !UNITY_EDITOR
+            // HandTrayAlignmentDefaults Slot_* locals (±3) were authored against the pre-shrink
+            // PlayerStand mesh. After Resources rebuild those locals explode in world space and
+            // spring tiles land off the rack — use scale-aware shelf placement instead.
+            return false;
+#else
+            return true;
+#endif
         }
 
-        private bool IsSceneAuthoredTray(TrayBinding tray)
+        private bool IsDesktopPreservedTray(TrayBinding tray)
         {
             if (tray.Root == null)
                 return false;
@@ -1209,10 +1253,9 @@ namespace PaiSho.Game
             if (boardSetup == null)
                 boardSetup = FindAnyObjectByType<GameBoardSetup>();
 
-            if (boardSetup == null || !boardSetup.PreserveSceneAuthored)
-                return false;
-
-            return tray.Root.GetComponentInParent<GameBoardSetup>() != null;
+            return boardSetup != null
+                && boardSetup.PreserveSceneAuthored
+                && tray.Root.GetComponentInParent<GameBoardSetup>() != null;
         }
 
         private static bool BindStandAnchorFromSceneTray(TrayBinding tray, Transform standTransform)

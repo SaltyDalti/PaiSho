@@ -84,14 +84,16 @@ namespace PaiSho.Game
             yield return TitleMenu.WaitUntilMatchRequested();
             SetupBoard();
             PotVisualManager.Instance?.InitializeAnchors();
-            FrameCameraOnBoard();
+            // Seat trays/tiles before framing so host rack bounds enter the camera fit
+            // (HJ-26: framing-before-Refresh left spring tiles under the dock).
             HandTrayController.Instance?.Refresh();
+            FrameCameraOnBoard();
             GameManager.Instance.RefreshLiveScores();
 #else
             SetupBoard();
             PotVisualManager.Instance?.InitializeAnchors();
-            FrameCameraOnBoard();
             HandTrayController.Instance?.Refresh();
+            FrameCameraOnBoard();
             GameManager.Instance.RefreshLiveScores();
 
             yield return TitleMenu.WaitUntilMatchRequested();
@@ -107,6 +109,7 @@ namespace PaiSho.Game
             GameLogManager.Instance?.ClearEntries();
             AiPlanMemory.Clear();
             HandTrayController.Instance?.Refresh();
+            FrameCameraOnBoard();
             GameManager.Instance.RefreshLiveScores();
             DebugLogger.Log("--- New match ---");
             DebugLogger.Log(
