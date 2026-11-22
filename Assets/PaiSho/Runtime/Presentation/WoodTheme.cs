@@ -1637,8 +1637,8 @@ namespace PaiSho
 
             // On WebGL, keep imported glTF/URP materials. EnsureMaterials → ToUrpMaterial
             // walks every Garden* renderer and has blown Safari's invoke_iii stack on the
-            // restored board (~72MB data). HJ-25: also skip material tweaks on WebGL —
-            // Light↔Dark swap / neutral tiling clones every Garden* material at Instantiate.
+            // restored board. ApplyBoardModelMaterialTweaks still runs — Light↔Dark name
+            // swap + neutral tiling are required for readable gardens (HJ-26).
 #if !UNITY_WEBGL || UNITY_EDITOR
             PieceMaterialUtility.EnsureMaterials(instance, sourceAssetPath);
 #endif
@@ -1666,9 +1666,7 @@ namespace PaiSho
             AlignBoardModelToFloor(instance, layout, recenterXZ: true);
             boardSurfaceY = TryGetBoardSurfaceY(instance, layout.Origin, out float topY) ? topY : layout.TileHeight;
 
-#if !UNITY_WEBGL || UNITY_EDITOR
             ApplyBoardModelMaterialTweaks(instance, layout);
-#endif
 
             return surfaceRoot;
         }
@@ -2164,12 +2162,8 @@ namespace PaiSho
             if (boardModel == null || layout == null)
                 return;
 
-            // HJ-25: FineAlign walks every Garden*/Gate renderer bounds repeatedly at boot.
-            // Gate-pitch CellSpacing from CreateModelBoardSurface is enough for WebGL play;
-            // skip the second/third align pass that has co-occurred with Safari invoke_iii.
-#if UNITY_WEBGL && !UNITY_EDITOR
-            return;
-#else
+            // Needed on WebGL too: without gate lock, PlayerStand CellSpacing/scale drifts and
+            // hand-tray Slot_* seating misses the rack (HJ-26). EnsureMaterials stays skipped.
             if (TryAlignGates(boardModel, layout, "GateForeign", BoardUtils.SouthGate, "GateHome", BoardUtils.NorthGate))
             {
                 AlignGridCenterToMiddleGate(boardModel, layout);
@@ -2178,7 +2172,6 @@ namespace PaiSho
             }
 
             CenterBoardLinesXZ(boardModel);
-#endif
         }
 
         public static bool TryMeasureGatePitch(GameObject boardModel, out float pitch)
@@ -2488,10 +2481,6 @@ namespace PaiSho
             if (boardModel == null || layout == null)
                 return;
 
-#if UNITY_WEBGL && !UNITY_EDITOR
-            // Imported garden materials stay as authored; avoid Material clones at boot.
-            return;
-#else
             float neutralTiling = layout.NeutralGardenTextureTiling;
             float neutralLighten = layout.NeutralGardenLighten;
 
@@ -2537,7 +2526,6 @@ namespace PaiSho
                 foreach (Renderer renderer in darkRenderers)
                     AssignRendererMaterial(renderer, CreateMaterialInstance(lightGardenMaterial));
             }
-#endif
         }
 
         private static Material CreateMaterialInstance(Material source)

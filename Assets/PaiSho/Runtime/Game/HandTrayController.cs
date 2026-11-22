@@ -146,20 +146,14 @@ namespace PaiSho.Game
             if (current != null && current.name == trayName)
                 return current;
 
-            // Prefer baking onto the player stand when board setup exists.
+            // Prefer baking onto the Resources PlayerStand after board init — not onto the
+            // scene PrefabInstance stands that WebGL destroys on New Game (deferred Board path).
             BoardLayout bakeLayout = layout != null ? layout : FindAnyObjectByType<BoardLayout>();
-            if (setup != null && bakeLayout != null)
+            Transform stand = BoardManager.Instance != null
+                ? BoardManager.Instance.GetPlayerStandTransform(player)
+                : null;
+            if (setup != null && bakeLayout != null && stand != null)
             {
-                Transform stand = BoardManager.Instance != null
-                    ? BoardManager.Instance.GetPlayerStandTransform(player)
-                    : null;
-                if (stand == null)
-                {
-                    string standName = player == Player.Host ? "PlayerStand" : "PlayerStandOpponent";
-                    var standObject = GameObject.Find(standName);
-                    stand = standObject != null ? standObject.transform : null;
-                }
-
                 Transform baked = HandTrayLayoutUtility.CreateBakedTray(
                     stand, bakeLayout, player, trayName, bakeSlotMarkers: true);
                 if (baked != null)
@@ -462,7 +456,10 @@ namespace PaiSho.Game
                 return false;
 
             // Scene-authored trays under the stand keep their baked pose.
-            if (UsesSceneSlotMarkers(tray) || IsSceneAuthoredTray(tray))
+            // WebGL forces PreserveSceneAuthored=false but still reattaches Slot_* trays onto
+            // Resources PlayerStand — keep that pose instead of overwriting with topCenter.
+            if (UsesSceneSlotMarkers(tray) || IsSceneAuthoredTray(tray) ||
+                TrayAlreadySeatedOnStand(tray, standTransform))
                 return BindStandAnchorFromSceneTray(tray, standTransform);
 
             if (!WoodTheme.TryGetPlayerStandAnchor(standTransform.gameObject, tray.Owner, out tray.StandAnchor))
@@ -1193,12 +1190,21 @@ namespace PaiSho.Game
 
         private bool UsesSceneSlotMarkers(TrayBinding tray)
         {
+            if (tray.Root == null || !GameBoardSetup.HasBakedSlotMarkers(tray.Root))
+                return false;
+
             if (boardSetup == null)
                 boardSetup = FindAnyObjectByType<GameBoardSetup>();
 
-            return boardSetup != null
-                && boardSetup.PreserveSceneAuthored
-                && GameBoardSetup.HasBakedSlotMarkers(tray.Root);
+            // Desktop preserve path, or WebGL Resources rebuild that kept Slot_* markers.
+            if (boardSetup != null && boardSetup.PreserveSceneAuthored)
+                return true;
+
+#if UNITY_WEBGL && !UNITY_EDITOR
+            return true;
+#else
+            return false;
+#endif
         }
 
         private bool IsSceneAuthoredTray(TrayBinding tray)
@@ -1209,10 +1215,30 @@ namespace PaiSho.Game
             if (boardSetup == null)
                 boardSetup = FindAnyObjectByType<GameBoardSetup>();
 
-            if (boardSetup == null || !boardSetup.PreserveSceneAuthored)
+            if (boardSetup == null)
                 return false;
 
-            return tray.Root.GetComponentInParent<GameBoardSetup>() != null;
+            if (boardSetup.PreserveSceneAuthored)
+                return tray.Root.GetComponentInParent<GameBoardSetup>() != null;
+
+#if UNITY_WEBGL && !UNITY_EDITOR
+            // WebGL clears PreserveSceneAuthored so Resources Board.glb can seat, but the
+            // HandTray* + Slot_* hierarchy is still the scene-authored rack.
+            return GameBoardSetup.HasBakedSlotMarkers(tray.Root);
+#else
+            return false;
+#endif
+        }
+
+        private static bool TrayAlreadySeatedOnStand(TrayBinding tray, Transform standTransform)
+        {
+            if (tray.Root == null || standTransform == null)
+                return false;
+
+            if (!GameBoardSetup.HasBakedSlotMarkers(tray.Root))
+                return false;
+
+            return tray.Root.IsChildOf(standTransform);
         }
 
         private static bool BindStandAnchorFromSceneTray(TrayBinding tray, Transform standTransform)
