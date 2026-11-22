@@ -158,6 +158,10 @@ namespace PaiSho.Game
             if (HasHandTrayRoots())
                 return true;
 
+#if !UNITY_WEBGL || UNITY_EDITOR
+            // Desktop: clone authored Slot_* trays from the prefab template when missing.
+            // WebGL Resources PlayerStand is shrink-remeshed — template locals explode and park
+            // tiles off-rack; bake onto the live stand instead (HJ-27).
             GameBoardSetup template = templateOverride ?? ResolvePrefabTemplate();
             if (template != null && TryRestoreHandTrayRootsFromTemplate(template))
             {
@@ -167,6 +171,7 @@ namespace PaiSho.Game
             DiscoverTrayReferences();
             if (HasHandTrayRoots())
                 return true;
+#endif
 
             if (TryBakeMissingHandTrays())
             {
@@ -345,6 +350,7 @@ namespace PaiSho.Game
             return trayRoot != null
                 && trayRoot
                 && trayRoot.name == trayName
+                && trayRoot.gameObject.activeInHierarchy
                 && trayRoot.gameObject.scene.IsValid()
                 && trayRoot.gameObject.scene.isLoaded;
         }

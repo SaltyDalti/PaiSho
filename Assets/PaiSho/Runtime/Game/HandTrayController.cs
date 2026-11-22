@@ -125,7 +125,12 @@ namespace PaiSho.Game
                 : GameBoardSetup.OpponentTrayName;
 
             Transform authored = player == Player.Host ? setup?.HostTrayRoot : setup?.OpponentTrayRoot;
-            if (authored != null && authored.gameObject.scene.IsValid())
+            // Require live name + active: DestroyDetachedHandTrays renames to *_Obsolete and
+            // deactivates before end-of-frame Destroy (HJ-27).
+            if (authored != null &&
+                authored.name == trayName &&
+                authored.gameObject.activeInHierarchy &&
+                authored.gameObject.scene.IsValid())
             {
                 if (current != null && current != authored)
                 {
@@ -140,7 +145,7 @@ namespace PaiSho.Game
 
             // Search the loaded scene before creating a blank tray at the origin.
             var named = GameObject.Find(trayName);
-            if (named != null && named.scene.IsValid())
+            if (named != null && named.activeInHierarchy && named.scene.IsValid())
                 return named.transform;
 
             if (current != null && current.name == trayName)
@@ -469,43 +474,15 @@ namespace PaiSho.Game
             Bounds localBounds = tray.StandAnchor.LocalBounds;
 
             tray.Root.SetParent(stand, false);
-#if UNITY_WEBGL && !UNITY_EDITOR
-            // Crescent PlayerStand AABB center sits in the hollow — seat on the inner lip
-            // toward the board so spring tiles land on the rack, not the floor beside it.
-            if (layout != null &&
-                WoodTheme.TryGetPlayerStandMeshRenderer(standTransform.gameObject, out Renderer standRenderer))
-            {
-                Bounds world = standRenderer.bounds;
-                Vector3 towardBoard = layout.CoordinateToWorld(BoardUtils.MiddleGate) - world.center;
-                towardBoard.y = 0f;
-                if (towardBoard.sqrMagnitude < 0.0001f)
-                    towardBoard = -standTransform.forward;
-                towardBoard.Normalize();
-
-                // Crescent opens toward the board: AABB center sits in the hollow. Move
-                // away from the board to the AABB outer face (visible rim).
-                float inset = Mathf.Min(world.extents.x, world.extents.z) * 0.95f;
-                Vector3 seatWorld = world.center - towardBoard * inset;
-                seatWorld.y = world.max.y + layout.PieceSurfaceLift + 0.03f;
-                tray.Root.position = seatWorld;
-                tray.Root.rotation = Quaternion.LookRotation(-towardBoard, Vector3.up);
-            }
-            else
-            {
-                tray.Root.localPosition = new Vector3(
-                    localBounds.center.x,
-                    localBounds.max.y + layout.PieceSurfaceLift + 0.01f,
-                    localBounds.center.z);
-                tray.Root.localRotation = Quaternion.identity;
-            }
-#else
+            // Keep tray root at mesh-local topCenter. Crescent hollow is handled when seating
+            // tiles (GetCrescentRimLocalOffset) — moving the whole tray to the AABB outer face
+            // still missed the carved rim and parked spring tiles on the floor (HJ-27 live).
             Vector3 topCenter = new Vector3(
                 localBounds.center.x,
                 localBounds.max.y + layout.PieceSurfaceLift + 0.01f,
                 localBounds.center.z);
             tray.Root.localPosition = topCenter;
             tray.Root.localRotation = Quaternion.identity;
-#endif
 
             tray.DragSurfaceY = tray.Root.position.y + 0.05f;
             tray.DragPlane = new Plane(Vector3.up, new Vector3(0f, tray.DragSurfaceY, 0f));
@@ -667,12 +644,19 @@ namespace PaiSho.Game
                     else
                     {
                         Vector3 localPosition = tileAxis * (startOffset + i * localSpacing);
+#if UNITY_WEBGL && !UNITY_EDITOR
+                        // Shelf axis alone leaves tiles in the crescent hollow (floor). Nudge onto
+                        // the solid outer rim in stand-local space (HJ-27).
+                        if (tray.HasStandAnchor)
+                            localPosition += WoodTheme.GetCrescentRimLocalOffset(tray.StandAnchor, layout);
+#endif
                         visual.transform.SetPositionAndRotation(
                             tray.Root.TransformPoint(localPosition),
                             tray.Root.rotation);
                     }
 
                     WoodTheme.FitPrefabScaleOnly(visual, layout.CellSpacing);
+                    BoardSideLayoutUtility.EnsureRuntimeTileVisible(visual, type);
                 }
 
                 WoodTheme.EnsurePiecePickCollider(visual, layout.CellSpacing);

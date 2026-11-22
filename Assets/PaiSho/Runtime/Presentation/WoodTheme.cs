@@ -10,6 +10,8 @@ namespace PaiSho
         // Board surface — hinoki tea-house tones
         public static readonly Color TableWood = Hex("#3A2A1C");
         public static readonly Color FrameWood = Hex("#241810");
+        /// <summary>WebGL PlayerStand tint — FrameWood×dark_oak reads as matte black under URP.</summary>
+        public static readonly Color StandWood = Hex("#9A6B45");
         public static readonly Color LightGardenWood = Hex("#E4CF9A");
         public static readonly Color DarkGardenWood = Hex("#5C3A22");
         public static readonly Color NeutralPathWood = Hex("#D8C08A");
@@ -1957,13 +1959,48 @@ namespace PaiSho
                 renderer.gameObject.SetActive(true);
                 renderer.enabled = true;
 #if UNITY_WEBGL && !UNITY_EDITOR
-                // dark_oak + EnsureMaterials-skip left stands as matte black silhouettes on
-                // live WebGL (HJ-26 "tray bakes weird"). Use a readable mid wood instead.
-                ApplyWood(renderer, new Color(0.55f, 0.38f, 0.24f), 0.42f);
+                // FrameWood (#241810) × dark_oak reads as matte black under WebGL URP lighting
+                // (HJ-26/HJ-27). Keep the oak albedo but tint with StandWood so grain stays visible.
+                ApplyTexturedWood(renderer, "Scene/dark_oak", StandWood, 0.42f, 2.2f);
 #else
                 ApplyTexturedWood(renderer, "Scene/dark_oak", FrameWood, 0.45f, 2.2f);
 #endif
             }
+        }
+
+        /// <summary>
+        /// Crescent PlayerStand AABB center is hollow (opens toward the board). Offset along the
+        /// short local axis onto the solid outer rim so shelf-seated tiles sit on wood, not floor.
+        /// </summary>
+        public static Vector3 GetCrescentRimLocalOffset(PlayerStandAnchor anchor, BoardLayout layout)
+        {
+            if (layout == null || anchor.StandTransform == null)
+                return Vector3.zero;
+
+            Bounds localBounds = anchor.LocalBounds;
+            Vector3 shelfAxis = anchor.LocalTileAxis;
+            Vector3 depthAxis = Mathf.Abs(shelfAxis.x) >= 0.5f ? Vector3.forward : Vector3.right;
+
+            Transform mesh = anchor.StandTransform;
+            Vector3 centerWorld = mesh.TransformPoint(localBounds.center);
+            Vector3 towardBoard = layout.CoordinateToWorld(BoardUtils.MiddleGate) - centerWorld;
+            towardBoard.y = 0f;
+            if (towardBoard.sqrMagnitude < 0.0001f)
+                towardBoard = mesh.forward;
+            towardBoard.Normalize();
+
+            // Crescent opens toward the board → solid rim is away from the board.
+            Vector3 awayFromBoard = -towardBoard;
+            Vector3 depthWorld = mesh.TransformDirection(depthAxis);
+            if (Vector3.Dot(depthWorld, awayFromBoard) < 0f)
+                depthAxis = -depthAxis;
+
+            float depthExtent = Mathf.Abs(depthAxis.x) >= 0.5f
+                ? localBounds.extents.x
+                : localBounds.extents.z;
+
+            // ~55% of center→face puts tiles on the carved rim, not the hollow or past the AABB.
+            return depthAxis * (depthExtent * 0.55f);
         }
 
         public readonly struct PlayerStandAnchor
