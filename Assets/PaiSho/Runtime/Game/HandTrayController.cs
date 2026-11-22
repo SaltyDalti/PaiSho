@@ -469,12 +469,41 @@ namespace PaiSho.Game
             Bounds localBounds = tray.StandAnchor.LocalBounds;
 
             tray.Root.SetParent(stand, false);
+#if UNITY_WEBGL && !UNITY_EDITOR
+            // Crescent PlayerStand AABB center sits in the hollow — seat on the inner lip
+            // toward the board so spring tiles land on the rack, not the floor beside it.
+            if (layout != null &&
+                WoodTheme.TryGetPlayerStandMeshRenderer(standTransform.gameObject, out Renderer standRenderer))
+            {
+                Bounds world = standRenderer.bounds;
+                Vector3 towardBoard = layout.CoordinateToWorld(BoardUtils.MiddleGate) - world.center;
+                towardBoard.y = 0f;
+                if (towardBoard.sqrMagnitude < 0.0001f)
+                    towardBoard = -standTransform.forward;
+                towardBoard.Normalize();
+
+                float inset = Mathf.Min(world.extents.x, world.extents.z) * 0.42f;
+                Vector3 seatWorld = world.center + towardBoard * inset;
+                seatWorld.y = world.max.y + layout.PieceSurfaceLift + 0.02f;
+                tray.Root.position = seatWorld;
+                tray.Root.rotation = Quaternion.LookRotation(-towardBoard, Vector3.up);
+            }
+            else
+            {
+                tray.Root.localPosition = new Vector3(
+                    localBounds.center.x,
+                    localBounds.max.y + layout.PieceSurfaceLift + 0.01f,
+                    localBounds.center.z);
+                tray.Root.localRotation = Quaternion.identity;
+            }
+#else
             Vector3 topCenter = new Vector3(
                 localBounds.center.x,
                 localBounds.max.y + layout.PieceSurfaceLift + 0.01f,
                 localBounds.center.z);
             tray.Root.localPosition = topCenter;
             tray.Root.localRotation = Quaternion.identity;
+#endif
 
             tray.DragSurfaceY = tray.Root.position.y + 0.05f;
             tray.DragPlane = new Plane(Vector3.up, new Vector3(0f, tray.DragSurfaceY, 0f));
