@@ -514,6 +514,120 @@ namespace PaiSho.Board
             return null;
         }
 
+        private struct HandTrayPose
+        {
+            public Transform Tray;
+            public Vector3 LocalPosition;
+            public Quaternion LocalRotation;
+            public Vector3 LocalScale;
+            public bool Valid;
+        }
+
+        /// <summary>
+        /// Lift scene-authored HandTray* off PlayerStand meshes before those stands are destroyed,
+        /// so Slot_* markers survive the Resources rebuild. Captures local pose for re-seat.
+        /// </summary>
+        private void DetachAuthoredHandTrays(
+            Transform safeParent,
+            out HandTrayPose hostPose,
+            out HandTrayPose opponentPose)
+        {
+            hostPose = default;
+            opponentPose = default;
+
+            Transform hostTray = null;
+            Transform opponentTray = null;
+
+            var setup = GameBoardSetup.Instance != null
+                ? GameBoardSetup.Instance
+                : Object.FindAnyObjectByType<GameBoardSetup>();
+            if (setup != null)
+            {
+                setup.DiscoverTrayReferences();
+                hostTray = setup.HostTrayRoot;
+                opponentTray = setup.OpponentTrayRoot;
+            }
+
+            hostTray ??= FindSceneObjectByName(GameBoardSetup.HostTrayName);
+            opponentTray ??= FindSceneObjectByName(GameBoardSetup.OpponentTrayName);
+
+            hostPose = CaptureHandTrayPose(hostTray);
+            opponentPose = CaptureHandTrayPose(opponentTray);
+
+            Transform parent = safeParent != null ? safeParent : transform;
+            if (hostTray != null)
+                hostTray.SetParent(parent, true);
+            if (opponentTray != null)
+                opponentTray.SetParent(parent, true);
+        }
+
+        private static HandTrayPose CaptureHandTrayPose(Transform tray)
+        {
+            if (tray == null)
+                return default;
+
+            return new HandTrayPose
+            {
+                Tray = tray,
+                LocalPosition = tray.localPosition,
+                LocalRotation = tray.localRotation,
+                LocalScale = tray.localScale,
+                Valid = true
+            };
+        }
+
+        private void DestroyAllScenePlayerStands()
+        {
+            if (hostPlayerStand != null)
+            {
+                Destroy(hostPlayerStand.gameObject);
+                hostPlayerStand = null;
+            }
+
+            if (opponentPlayerStand != null)
+            {
+                Destroy(opponentPlayerStand.gameObject);
+                opponentPlayerStand = null;
+            }
+
+            // Orphans left when TryBindPrebuiltVisuals was skipped (WebGL Resources path).
+            var all = Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (int i = 0; i < all.Length; i++)
+            {
+                Transform candidate = all[i];
+                if (candidate == null)
+                    continue;
+
+                if (candidate.name != "PlayerStand" && candidate.name != "PlayerStandOpponent")
+                    continue;
+
+                Destroy(candidate.gameObject);
+            }
+        }
+
+        private void ReattachAuthoredHandTrays(HandTrayPose hostPose, HandTrayPose opponentPose)
+        {
+            ApplyHandTrayPose(hostPose, hostPlayerStand);
+            ApplyHandTrayPose(opponentPose, opponentPlayerStand);
+
+            var setup = GameBoardSetup.Instance != null
+                ? GameBoardSetup.Instance
+                : Object.FindAnyObjectByType<GameBoardSetup>();
+            setup?.DiscoverTrayReferences();
+        }
+
+        private static void ApplyHandTrayPose(HandTrayPose pose, Transform standRoot)
+        {
+            if (!pose.Valid || pose.Tray == null || standRoot == null)
+                return;
+
+            // Scene trays are authored under the PlayerStand root (not a nested mesh child).
+            pose.Tray.SetParent(standRoot, false);
+            pose.Tray.localPosition = pose.LocalPosition;
+            pose.Tray.localRotation = pose.LocalRotation;
+            pose.Tray.localScale = pose.LocalScale;
+        }
+
         private void BuildBoardVisuals()
         {
             if (boardLayout == null)
@@ -531,13 +645,14 @@ namespace PaiSho.Board
             if (rimRoot != null)
                 Destroy(rimRoot.gameObject);
 
-            if (hostPlayerStand != null)
-                Destroy(hostPlayerStand.gameObject);
-
-            if (opponentPlayerStand != null)
-                Destroy(opponentPlayerStand.gameObject);
-
             Transform boardTransform = boardLayout != null ? boardLayout.transform : transform;
+
+            // WebGL forces this path with usePrebuiltLayout=false, so TryBindPrebuiltVisuals
+            // never claims scene PlayerStand PrefabInstances. Without clearing them, SpawnPlayerStand
+            // doubles the rack (legacy silhouette between the real Slot_* tray and the board).
+            DetachAuthoredHandTrays(
+                boardTransform, out HandTrayPose hostTrayPose, out HandTrayPose opponentTrayPose);
+            DestroyAllScenePlayerStands();
 
             if (boardLayout.UseModelBoard && BoardVisualLoader.TryLoadModel(out GameObject boardModel, out string boardSource))
             {
@@ -587,6 +702,7 @@ namespace PaiSho.Board
                     opponentPlayerStand = WoodTheme.SpawnPlayerStand(boardLayout, boardTransform, Player.Opponent);
                     RefreshPlayerStand(Player.Host);
                     RefreshPlayerStand(Player.Opponent);
+                    ReattachAuthoredHandTrays(hostTrayPose, opponentTrayPose);
                 }
             }
             else if (boardLayout.UsePhotoBoard && BoardTextureLoader.IsAvailable())
