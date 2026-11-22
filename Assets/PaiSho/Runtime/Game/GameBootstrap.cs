@@ -76,6 +76,18 @@ namespace PaiSho.Game
             GameSession.ApplyAudio();
             // Reserves must exist before board init refreshes trays / HUD.
             ReserveManager.Instance.InitializeDefaultReserves();
+
+#if UNITY_WEBGL && !UNITY_EDITOR
+            // HJ-25: defer Board.glb Instantiate + garden GPU upload until New Game.
+            // Title dim already covers the scene; Instantiating the carved board at boot
+            // co-occurs with Safari invoke_iii even after EnsureMaterials skip.
+            yield return TitleMenu.WaitUntilMatchRequested();
+            SetupBoard();
+            PotVisualManager.Instance?.InitializeAnchors();
+            FrameCameraOnBoard();
+            HandTrayController.Instance?.Refresh();
+            GameManager.Instance.RefreshLiveScores();
+#else
             SetupBoard();
             PotVisualManager.Instance?.InitializeAnchors();
             FrameCameraOnBoard();
@@ -83,6 +95,7 @@ namespace PaiSho.Game
             GameManager.Instance.RefreshLiveScores();
 
             yield return TitleMenu.WaitUntilMatchRequested();
+#endif
 
             if (AiController.Instance != null)
                 AiController.Instance.SetAiEnabled(GameSession.AiEnabled);

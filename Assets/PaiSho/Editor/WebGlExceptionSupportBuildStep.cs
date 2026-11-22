@@ -16,7 +16,9 @@ namespace PaiSho.EditorTools
     /// </summary>
     public sealed class WebGlExceptionSupportBuildStep : IPreprocessBuildWithReport
     {
-        public const string SafariEmscriptenArgs = "-sSTACK_SIZE=5MB";
+        // HJ-25: 5MB still left real Safari in invoke_iii after EnsureMaterials skip.
+        // Headless WebKit was clean; raise WASM stack before giving up on Safari play.
+        public const string SafariEmscriptenArgs = "-sSTACK_SIZE=8MB";
 
         public int callbackOrder => 0;
 
