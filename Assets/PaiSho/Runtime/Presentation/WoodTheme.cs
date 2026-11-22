@@ -1696,6 +1696,60 @@ namespace PaiSho
             HideSquareBoardBaseAndEmbeddedStand(boardModelRoot);
         }
 
+        /// <summary>
+        /// Resources / non-preserve path: always apply neutral tiling, lighten, and GardenLight/Dark swap.
+        /// </summary>
+        public static void EnsureBoardModelMaterialTweaks(BoardLayout layout, GameObject boardModelRoot)
+        {
+            if (boardModelRoot == null || layout == null)
+                return;
+
+            ApplyBoardModelMaterialTweaks(boardModelRoot, layout);
+        }
+
+        /// <summary>
+        /// Debug invariant: GateForeign/Home mesh centers should match CoordinateToWorld within ε
+        /// (default 3% of CellSpacing) after gate-pitch calibration + FineAlign.
+        /// </summary>
+        public static bool LogGateLayoutAlignment(BoardLayout layout, GameObject boardModel, float epsilonFraction = 0.03f)
+        {
+            if (layout == null || boardModel == null)
+                return false;
+
+            if (!TryGetRendererByName(boardModel, "GateForeign", out Renderer southGate) ||
+                !TryGetRendererByName(boardModel, "GateHome", out Renderer northGate))
+            {
+                Debug.LogWarning("Gate layout assert skipped — GateForeign/GateHome renderers missing.");
+                return false;
+            }
+
+            float epsilon = Mathf.Max(0.0001f, layout.CellSpacing * Mathf.Clamp(epsilonFraction, 0.005f, 0.1f));
+            Vector3 southTarget = layout.CoordinateToWorld(BoardUtils.SouthGate);
+            Vector3 northTarget = layout.CoordinateToWorld(BoardUtils.NorthGate);
+            Vector3 southActual = southGate.bounds.center;
+            Vector3 northActual = northGate.bounds.center;
+
+            float southErr = Vector2.Distance(
+                new Vector2(southTarget.x, southTarget.z),
+                new Vector2(southActual.x, southActual.z));
+            float northErr = Vector2.Distance(
+                new Vector2(northTarget.x, northTarget.z),
+                new Vector2(northActual.x, northActual.z));
+
+            if (southErr > epsilon || northErr > epsilon)
+            {
+                Debug.LogWarning(
+                    $"Gate layout drift: southΔ={southErr:F4} northΔ={northErr:F4} ε={epsilon:F4} " +
+                    $"(spacing={layout.CellSpacing:F3}). Tiles may miss intersections.");
+                return false;
+            }
+
+            Debug.Log(
+                $"Gate layout OK: southΔ={southErr:F4} northΔ={northErr:F4} ε={epsilon:F4} " +
+                $"(spacing={layout.CellSpacing:F3}).");
+            return true;
+        }
+
         public static void RefreshPrebuiltStandVisuals(GameObject standRoot, System.Func<Transform, bool> skipRenderer = null)
         {
             if (standRoot == null)

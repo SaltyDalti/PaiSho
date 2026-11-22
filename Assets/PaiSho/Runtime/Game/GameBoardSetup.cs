@@ -121,8 +121,16 @@ namespace PaiSho.Game
                 return;
 
             Transform piecesRoot = transform.Find("Pieces");
-            manager.SetUsePrebuiltLayout(usePrebuiltLayout);
-            manager.SetPreserveSceneAuthored(preserveSceneAuthored);
+            bool bindPrebuilt = usePrebuiltLayout;
+            bool preserveAuthored = preserveSceneAuthored;
+#if UNITY_WEBGL && !UNITY_EDITOR
+            // GamePlay.unity ships an empty BoardModelSurface. Always seat WebGL against the
+            // full Resources Board.glb (Gate* + Garden*) rather than binding a hole.
+            bindPrebuilt = false;
+            preserveAuthored = false;
+#endif
+            manager.SetUsePrebuiltLayout(bindPrebuilt);
+            manager.SetPreserveSceneAuthored(preserveAuthored);
             manager.Initialize(layout, piecesRoot);
             WoodTheme.HideEmbeddedBoardUnderlays(gameObject);
         }

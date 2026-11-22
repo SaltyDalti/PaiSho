@@ -370,6 +370,7 @@ namespace PaiSho.Board
                     $"Calibrated layout from scene board: spacing={boardLayout.CellSpacing:F3}, " +
                     $"surfaceY={boardLayout.TileHeight:F3}, span={boardLayout.GridSpan:F3}, " +
                     $"yaw={boardLayout.GridYawDegrees:F1}°");
+                WoodTheme.LogGateLayoutAlignment(boardLayout, placedModel.gameObject);
             }
             else
             {
@@ -540,6 +541,7 @@ namespace PaiSho.Board
 
             if (boardLayout.UseModelBoard && BoardVisualLoader.TryLoadModel(out GameObject boardModel, out string boardSource))
             {
+                // Desktop-tuned knobs first; gate pitch then locks CellSpacing to this GLB.
                 BoardAlignmentDefaults.ApplyTo(boardLayout);
 
                 var modelSurface = WoodTheme.CreateModelBoardSurface(
@@ -556,17 +558,27 @@ namespace PaiSho.Board
                 Transform placedModel = FindBoardModel(gridRoot);
                 if (placedModel != null)
                 {
+                    // Calibrate → FineAlign → remeasure → FineAlign again so CoordinateToWorld
+                    // stays locked to GateForeign/GateHome after the final CellSpacing write.
                     WoodTheme.FineAlignBoardModel(placedModel.gameObject, boardLayout);
                     if (WoodTheme.TryMeasureNineteenByNineteenGridSpan(placedModel.gameObject, out float span))
                     {
                         boardLayout.RememberCalibratedGridSpan(span);
                         boardLayout.CalibrateFromBoardGridSpan(span);
+                        WoodTheme.FineAlignBoardModel(placedModel.gameObject, boardLayout);
                     }
                     if (WoodTheme.TryGetBoardSurfaceY(
                             placedModel.gameObject, boardLayout.Origin, out float alignedSurfaceY))
                         boardLayout.SetBoardSurfaceHeight(alignedSurfaceY);
 
                     WoodTheme.HideSquareBoardBaseAndEmbeddedStand(placedModel.gameObject);
+                    // CreateModelBoardSurface already tweaked materials; re-apply after align so
+                    // neutral tiling / lighten / Light↔Dark swap always win on Resources path.
+                    WoodTheme.EnsureBoardModelMaterialTweaks(boardLayout, placedModel.gameObject);
+                    WoodTheme.LogGateLayoutAlignment(boardLayout, placedModel.gameObject);
+                    DebugLogger.Log(
+                        $"Resources board seated: spacing={boardLayout.CellSpacing:F3}, " +
+                        $"surfaceY={boardLayout.TileHeight:F3}, span={boardLayout.GridSpan:F3}");
                 }
 
                 if (boardLayout.UseModelBoard && PlayerStandLoader.IsAvailable())
