@@ -18,29 +18,15 @@ namespace PaiSho.Game
             if (standRoot == null || layout == null)
                 return null;
 
-            if (!WoodTheme.TryGetPlayerStandAnchor(standRoot.gameObject, player, out WoodTheme.PlayerStandAnchor anchor))
-                return null;
-
-            Transform mesh = anchor.StandTransform;
-            Bounds localBounds = anchor.LocalBounds;
-#if UNITY_WEBGL && !UNITY_EDITOR
-            // Desktop TrayLocalOffset was authored against pre-shrink stands; on Resources
-            // PlayerStand it shoves the rack onto the floor beside the crescent (HJ-27).
-            Vector3 trayOffset = Vector3.zero;
-            Vector3 trayEuler = Vector3.zero;
-#else
-            Vector3 trayOffset = HandTrayAlignmentDefaults.GetTrayLocalOffset(player);
-            Vector3 trayEuler = HandTrayAlignmentDefaults.GetTrayLocalEuler(player);
-#endif
-
+            // Authored HandTray* lives under the stand root (GamePlay / GameBoardSetup prefab),
+            // not under the mesh AABB center. Parenting to the mesh + topCenter was the WebGL
+            // heuristic that threw Slot_* seats off the crescent (HJ-29).
             var trayObject = new GameObject(trayName);
             Transform trayRoot = trayObject.transform;
-            trayRoot.SetParent(mesh, false);
-            trayRoot.localPosition = new Vector3(
-                localBounds.center.x + trayOffset.x,
-                localBounds.max.y + layout.PieceSurfaceLift + 0.01f + trayOffset.y,
-                localBounds.center.z + trayOffset.z);
-            trayRoot.localRotation = Quaternion.Euler(trayEuler);
+            trayRoot.SetParent(standRoot, false);
+            trayRoot.localPosition = HandTrayAlignmentDefaults.GetAuthoredTrayLocalPosition(player);
+            trayRoot.localRotation = Quaternion.Euler(HandTrayAlignmentDefaults.GetAuthoredTrayLocalEuler(player));
+            trayRoot.localScale = HandTrayAlignmentDefaults.AuthoredTrayLocalScale;
 
             if (!bakeSlotMarkers)
                 return trayRoot;

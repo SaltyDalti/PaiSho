@@ -16,6 +16,15 @@ namespace PaiSho.Game
         public const float StandScaleMultiplier = 1.5f;
         public static readonly Vector3 StandExtraOffset = Vector3.zero;
 
+        /// <summary>
+        /// HandTray* localPosition under PlayerStand* as authored in GamePlay / GameBoardSetup prefab.
+        /// Not the same as TrayLocalOffset (F9 tuner delta on top of a live tray).
+        /// </summary>
+        public static readonly Vector3 AuthoredTrayLocalPosition =
+            new Vector3(3.3275645f, 1.5546582f, 0.90238065f);
+        public static readonly Vector3 AuthoredTrayLocalEuler = Vector3.zero;
+        public static readonly Vector3 AuthoredTrayLocalScale = Vector3.one;
+
         public static readonly Vector3 TrayLocalOffset =
             new Vector3(0.19078999757766725f, 0.015789499506354333f, 0f);
         public static readonly Vector3 TrayLocalEuler = Vector3.zero;
@@ -52,15 +61,16 @@ namespace PaiSho.Game
             new Vector3(-55f, 0f, 12.434209823608399f),
         };
 
+        // Prefab/scene HandTrayOpponent Slot_* (GameBoardSetup.prefab / GamePlay.unity).
         private static readonly Vector3[] OpponentSlotLocalPositions =
         {
-            new Vector3(-3.263159990310669f, -0.5990149974822998f, -0.08265499770641327f),
-            new Vector3(-2.2139899730682375f, -0.5990149974822998f, 0.12601999938488007f),
-            new Vector3(-1.172279953956604f, -0.5990149974822998f, 0.23035599291324616f),
-            new Vector3(-0.13057799637317658f, -0.5990149974822998f, 0.26982998847961428f),
-            new Vector3(0.911126971244812f, -0.5990149974822998f, 0.21627099812030793f),
-            new Vector3(1.9528299570083619f, -0.5990149974822998f, 0.0828389972448349f),
-            new Vector3(2.994539976119995f, -0.5990149974822998f, -0.15307700634002686f),
+            new Vector3(-3.4f, -0.17f, -0.37f),
+            new Vector3(-2.3508303f, -0.16999993f, -0.16132456f),
+            new Vector3(-1.30912f, -0.16999993f, -0.056988552f),
+            new Vector3(-0.26741815f, -0.16999993f, -0.017514557f),
+            new Vector3(0.7742868f, -0.16999993f, -0.07107355f),
+            new Vector3(1.8159899f, -0.16999993f, -0.20450556f),
+            new Vector3(2.8576996f, -0.16999993f, -0.44042152f),
         };
 
         private static readonly Vector3[] OpponentSlotLocalEuler =
@@ -129,6 +139,10 @@ namespace PaiSho.Game
         {
             return player == Player.Host ? TrayLocalEuler : OpponentTrayLocalEuler;
         }
+
+        public static Vector3 GetAuthoredTrayLocalPosition(Player player) => AuthoredTrayLocalPosition;
+
+        public static Vector3 GetAuthoredTrayLocalEuler(Player player) => AuthoredTrayLocalEuler;
 
         public static Vector3 GetSlotPosition(int slotIndex, Player player)
         {

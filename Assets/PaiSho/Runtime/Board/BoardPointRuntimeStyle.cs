@@ -15,13 +15,15 @@ namespace PaiSho.Board
 
         private static BoardPointTunerSettings CreateGameplay()
         {
+            // Diameter / height match BoardAlignmentDefaults (F8 export 2026-07-03) so WebGL
+            // discs scale like the Desktop-tuned markers relative to CellSpacing (HJ-29).
             var s = new BoardPointTunerSettings
             {
                 showMarkers = true,
                 showLabels = false,
                 colorByGarden = false,
-                markerDiameterScale = 0.135f,
-                markerHeightOffset = 0.018f,
+                markerDiameterScale = BoardAlignmentDefaults.MarkerDiameterScale,
+                markerHeightOffset = BoardAlignmentDefaults.MarkerHeightOffset,
                 markerAlpha = 0.72f,
                 markerColor = new Color(0.22f, 0.2f, 0.18f, 0.72f)
             };

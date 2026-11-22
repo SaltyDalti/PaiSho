@@ -738,14 +738,14 @@ namespace PaiSho.Board
                     opponentPlayerStand = WoodTheme.SpawnPlayerStand(boardLayout, boardTransform, Player.Opponent);
                     RefreshPlayerStand(Player.Host);
                     RefreshPlayerStand(Player.Opponent);
-#if UNITY_WEBGL && !UNITY_EDITOR
-                    // Scene HandTray* local poses were authored against the old stand mesh.
-                    // Shrunk Resources PlayerStand.glb no longer matches — drop them and let
-                    // EnsureHandTrayRoots bake Slot_* onto the live stand (HJ-26).
-                    DestroyDetachedHandTrays(hostTrayPose, opponentTrayPose);
-#else
+                    // Keep authored HandTray* + Slot_* + SampleTile under the new stand root.
+                    // Uniform stand scale preserves tray-to-mesh locals (HJ-29). Destroying trays
+                    // and AABB-rebaking was what threw WebGL seats off the crescent (#21/#22).
                     ReattachAuthoredHandTrays(hostTrayPose, opponentTrayPose);
-#endif
+                    var setup = GameBoardSetup.Instance != null
+                        ? GameBoardSetup.Instance
+                        : Object.FindAnyObjectByType<GameBoardSetup>();
+                    setup?.EnsureHandTrayRoots();
                 }
             }
             else if (boardLayout.UsePhotoBoard && BoardTextureLoader.IsAvailable())
