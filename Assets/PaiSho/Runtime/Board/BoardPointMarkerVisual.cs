@@ -60,7 +60,7 @@ namespace PaiSho.Board
             if (markerMaterial.HasProperty("_EmissionColor"))
             {
                 markerMaterial.EnableKeyword("_EMISSION");
-                markerMaterial.SetColor("_EmissionColor", color * 1.2f);
+                markerMaterial.SetColor("_EmissionColor", color * 0.35f);
             }
 
             return markerMaterial;
