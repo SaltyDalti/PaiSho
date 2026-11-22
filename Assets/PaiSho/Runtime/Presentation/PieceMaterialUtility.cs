@@ -108,12 +108,18 @@ namespace PaiSho
                         : opponentAccent ?? hostAccent;
                 }
 
-                if (bodyTemplate != null && HasAlbedoTexture(bodyTemplate))
+                // Avoid cloning glTF / broken shaders into new Material on WebGL — that path
+                // re-enters the same ToUrpMaterial trampoline class that blew Safari stacks.
+                if (bodyTemplate != null &&
+                    HasAlbedoTexture(bodyTemplate) &&
+                    !NeedsConversion(bodyTemplate))
                 {
                     WoodTheme.ApplyTexturedTileBody(
                         renderer, bodyTemplate, owner, type, smoothness, distinctTemplates);
                 }
-                else if (HasAlbedoTexture(renderer))
+                else if (HasAlbedoTexture(renderer) &&
+                         renderer.sharedMaterial != null &&
+                         !NeedsConversion(renderer.sharedMaterial))
                 {
                     WoodTheme.ApplyTexturedTileBody(
                         renderer, renderer.sharedMaterial, owner, type, smoothness, distinctTemplates: false);

@@ -618,11 +618,34 @@ namespace PaiSho.Board
 
         private static void RefreshHandTraySampleVisibility()
         {
+            // Prefer tray-local markers over a full-scene FindObjects sweep on WebGL — walking
+            // every HandTraySlotMarker + SampleTile mesh tree at New Game coincided with
+            // Safari trampoline pressure after 0.1.14 (HJ-31).
+            var setup = GameBoardSetup.Instance != null
+                ? GameBoardSetup.Instance
+                : Object.FindAnyObjectByType<GameBoardSetup>();
+            if (setup != null)
+            {
+                RefreshTraySampleVisibility(setup.HostTrayRoot);
+                RefreshTraySampleVisibility(setup.OpponentTrayRoot);
+                return;
+            }
+
             foreach (HandTraySlotMarker marker in Object.FindObjectsByType<HandTraySlotMarker>(
-                         FindObjectsInactive.Include, FindObjectsSortMode.None))
+                         FindObjectsInactive.Exclude, FindObjectsSortMode.None))
             {
                 marker?.RefreshVisibility();
             }
+        }
+
+        private static void RefreshTraySampleVisibility(Transform trayRoot)
+        {
+            if (trayRoot == null)
+                return;
+
+            HandTraySlotMarker[] markers = trayRoot.GetComponentsInChildren<HandTraySlotMarker>(true);
+            for (int i = 0; i < markers.Length; i++)
+                markers[i]?.RefreshVisibility();
         }
 
         private static void DestroyDetachedHandTrays(HandTrayPose hostPose, HandTrayPose opponentPose)
@@ -1408,7 +1431,14 @@ namespace PaiSho.Board
             if (string.IsNullOrEmpty(materialPath))
                 materialPath = ResolveBlendFallbackPath(type);
 
+#if !UNITY_WEBGL || UNITY_EDITOR
             PieceMaterialUtility.EnsureMaterials(instance, materialPath, liftFlowerFaces: liftFlowerFaces);
+#else
+            // Same Safari trampoline class as board EnsureMaterials/ToUrpMaterial. Owner tint
+            // still lands via ApplyPieceTheme (solid ceramic/terracotta when glTF needs convert).
+            if (liftFlowerFaces)
+                PieceMaterialUtility.EnsureFlowerFacesVisible(instance);
+#endif
             if (type == PieceType.Jasmine)
                 WoodTheme.ApplyJasmineThicknessCorrection(instance);
             WoodTheme.NormalizeFlowerInlayNames(instance);

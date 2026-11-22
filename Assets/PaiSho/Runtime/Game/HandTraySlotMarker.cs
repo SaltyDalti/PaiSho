@@ -49,15 +49,25 @@ namespace PaiSho.Game
             ResolveSlotIndexFromName();
             ResolveOwnerFromHierarchy();
 
-            // Keep SampleTile active in play so Transform.Find / world pose stay valid for
-            // ApplyRuntimeTileToSlot (CapturePot pattern). Only hide renderers — deactivating
-            // the GO left unthemed SampleTiles visible when OnEnable order skipped Start, and
-            // broke authored seating lookups (HJ-30).
             Transform sample = transform.Find(SampleTileName)
                 ?? GetComponentInChildren<HandTraySlotSampleTile>(true)?.transform;
             if (sample == null)
                 return;
 
+#if UNITY_WEBGL && !UNITY_EDITOR
+            // 0.1.14 kept all authored SampleTile prefabs active (renderers off) through
+            // callMain and Safari hit getWasmTableEntry OOB. Pose is still readable from
+            // inactive transforms via GetComponentInChildren(true) when seating (HJ-31).
+            if (Application.isPlaying)
+            {
+                sample.gameObject.SetActive(false);
+                return;
+            }
+
+            sample.gameObject.SetActive(true);
+#else
+            // Desktop / Editor: keep SampleTile active but non-rendered so gizmos / adopt
+            // tools can read world bounds without Find failing on inactive children.
             sample.gameObject.SetActive(true);
             if (!Application.isPlaying)
                 return;
@@ -73,6 +83,7 @@ namespace PaiSho.Game
                 if (collider != null)
                     collider.enabled = false;
             }
+#endif
         }
 
         public void DrawEditorGizmo(bool selected)
