@@ -20,18 +20,18 @@ namespace PaiSho
         public static readonly Color Wisteria = Hex("#9B7BB8");
         public static readonly Color Sakura = Hex("#E8A0BF");
 
-        // Overlay markers
-        public static readonly Color MoveMarker = new Color(0.18f, 0.38f, 0.62f, 0.92f);
-        public static readonly Color CaptureMarker = new Color(0.85f, 0.28f, 0.18f, 0.95f);
-        public static readonly Color MomentumMarker = new Color(0.55f, 0.38f, 0.72f, 0.92f);
-        public static readonly Color UnloadMarker = new Color(0.36f, 0.68f, 0.58f, 0.92f);
-        public static readonly Color DisharmonyMarker = new Color(0.72f, 0.22f, 0.42f, 0.78f);
-        public static readonly Color GardenBlockedMarker = new Color(0.68f, 0.52f, 0.16f, 0.75f);
-        public static readonly Color PathInk = new Color(0.12f, 0.10f, 0.14f, 0.55f);
-        public static readonly Color CaptureLine = new Color(0.92f, 0.42f, 0.22f, 0.65f);
-        public static readonly Color PushLine = new Color(0.35f, 0.55f, 0.72f, 0.6f);
-        public static readonly Color PortGlow = new Color(0.95f, 0.82f, 0.45f, 0.7f);
-        public static readonly Color WheelArrow = new Color(0.88f, 0.72f, 0.28f, 0.85f);
+        // Overlay markers — muted so garden wood + light tiles stay readable under bloom
+        public static readonly Color MoveMarker = new Color(0.16f, 0.32f, 0.48f, 0.78f);
+        public static readonly Color CaptureMarker = new Color(0.72f, 0.26f, 0.18f, 0.82f);
+        public static readonly Color MomentumMarker = new Color(0.45f, 0.34f, 0.58f, 0.78f);
+        public static readonly Color UnloadMarker = new Color(0.32f, 0.55f, 0.48f, 0.78f);
+        public static readonly Color DisharmonyMarker = new Color(0.58f, 0.22f, 0.36f, 0.62f);
+        public static readonly Color GardenBlockedMarker = new Color(0.55f, 0.44f, 0.18f, 0.58f);
+        public static readonly Color PathInk = new Color(0.12f, 0.10f, 0.14f, 0.45f);
+        public static readonly Color CaptureLine = new Color(0.78f, 0.36f, 0.22f, 0.5f);
+        public static readonly Color PushLine = new Color(0.32f, 0.48f, 0.6f, 0.45f);
+        public static readonly Color PortGlow = new Color(0.72f, 0.58f, 0.28f, 0.42f);
+        public static readonly Color WheelArrow = new Color(0.72f, 0.58f, 0.26f, 0.65f);
 
         // Harmony — host garden (green vine) / opponent garden (pink laser)
         public static readonly Color HostHarmonyLine = new Color(0.42f, 0.95f, 0.62f, 0.82f);
@@ -39,9 +39,9 @@ namespace PaiSho
         public static readonly Color HostHarmonyAura = new Color(0.45f, 0.92f, 0.58f, 0.48f);
         public static readonly Color OpponentHarmonyAura = new Color(1f, 0.55f, 0.74f, 0.48f);
 
-        // Spring buds on inlays
-        public static readonly Color HostSpringBloom = new Color(0.38f, 0.95f, 0.55f, 1f);
-        public static readonly Color OpponentSpringBloom = new Color(1f, 0.58f, 0.78f, 1f);
+        // Spring buds on inlays (kept soft for white/light tile readability)
+        public static readonly Color HostSpringBloom = new Color(0.28f, 0.62f, 0.38f, 1f);
+        public static readonly Color OpponentSpringBloom = new Color(0.78f, 0.38f, 0.52f, 1f);
 
         // UI — warm Nintendo-style palette (board overlays keep tea-house tones above)
         public static readonly Color UiInk = Hex("#3D4463");

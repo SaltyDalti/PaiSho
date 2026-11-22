@@ -70,7 +70,7 @@ namespace PaiSho.Game
             hoverGlow = WoodTheme.CreateGlowDisc(
                 layout.GetSurfaceWorldPosition(coordinate.Value, 0.028f),
                 size,
-                new Color(0.95f, 0.88f, 0.55f, 0.42f));
+                new Color(0.72f, 0.62f, 0.32f, 0.28f));
             if (layout.Origin != null)
                 hoverGlow.transform.rotation = layout.Origin.rotation;
             hoverGlow.transform.SetParent(root, true);
@@ -405,7 +405,7 @@ namespace PaiSho.Game
             var halo = WoodTheme.CreateGlowDisc(
                 layout.GetSurfaceWorldPosition(wheel.BoardCoordinate, 0.025f),
                 ringSize,
-                new Color(0.95f, 0.8f, 0.34f, 0.48f));
+                new Color(0.72f, 0.58f, 0.28f, 0.32f));
             if (layout.Origin != null)
                 halo.transform.rotation = layout.Origin.rotation;
             halo.transform.SetParent(contextRoot, true);
@@ -428,7 +428,7 @@ namespace PaiSho.Game
             float rayWidth = layout.CellSpacing * 0.035f;
             float ringSize = layout.CellSpacing * 0.34f;
             var rayColor = JapaneseTheme.DisharmonyMarker;
-            var threatRingColor = new Color(0.88f, 0.32f, 0.48f, 0.65f);
+            var threatRingColor = new Color(0.68f, 0.28f, 0.38f, 0.4f);
 
             foreach (Piece piece in BoardManager.Instance.GetAllPieces())
             {

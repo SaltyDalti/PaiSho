@@ -23,12 +23,17 @@ namespace PaiSho.Game
         }
 
         private static readonly Color HarmonyGlow = new(0.55f, 0.92f, 0.62f, 1f);
-        private static readonly Color HostSpringGlow = new(0.32f, 0.95f, 0.48f, 1f);
-        private static readonly Color OpponentSpringGlow = new(1f, 0.48f, 0.72f, 1f);
+        // Soft owner tint — kept under bloom threshold so white/light tiles stay readable.
+        private static readonly Color HostSpringGlow = new(0.28f, 0.62f, 0.38f, 1f);
+        private static readonly Color OpponentSpringGlow = new(0.78f, 0.38f, 0.52f, 1f);
         private static readonly Color BloomGlow = new(1f, 0.88f, 0.55f, 1f);
         private static readonly Color WiltDim = new(0.62f, 0.48f, 0.38f, 1f);
         private static readonly Color GhostGlow = new(0.62f, 0.78f, 0.98f, 1f);
         private static readonly Color SeasonGlow = new(0.78f, 0.92f, 1f, 1f);
+
+        private const float FlowerEmissionHdrScale = 1.45f;
+        private const float SpringBudEmissionScale = 0.34f;
+        private const float SpringBudHdrScale = 1.15f;
 
         private Piece piece;
         private LifeState lifeState = LifeState.Idle;
@@ -394,13 +399,13 @@ namespace PaiSho.Game
                 WoodTheme.GetOwnerHarmonyColor(piece.Owner),
                 lifeState == LifeState.Bloom ? 0.35f : 0.55f);
 
-            // Spring buds: precise owner tint — host green / opponent pink — static, no pulse.
+            // Spring buds: soft owner tint — host green / opponent pink — static, no pulse.
             Color flowerEmission = lifeState switch
             {
-                LifeState.Harmony => harmonyTint * (1.35f + 0.75f * pulse),
-                LifeState.Bloom => Color.Lerp(accent, BloomGlow, 0.45f) * (1.55f + 0.85f * pulse),
-                LifeState.Bud => ResolveSpringGlow(piece.Owner) * 1.15f,
-                LifeState.Ghost => GhostGlow * (0.75f + 0.4f * pulse),
+                LifeState.Harmony => harmonyTint * (1.05f + 0.45f * pulse),
+                LifeState.Bloom => Color.Lerp(accent, BloomGlow, 0.45f) * (1.15f + 0.55f * pulse),
+                LifeState.Bud => ResolveSpringGlow(piece.Owner) * SpringBudEmissionScale,
+                LifeState.Ghost => GhostGlow * (0.55f + 0.28f * pulse),
                 LifeState.Wilt => Color.Lerp(accent, WiltDim, 0.55f) * 0.35f,
                 LifeState.HeavyWilt => WiltDim * 0.16f,
                 _ => Color.black
@@ -448,7 +453,8 @@ namespace PaiSho.Game
                 return;
             }
 
-            Color hdrEmission = emission * 3.2f;
+            float hdrScale = lifeState == LifeState.Bud ? SpringBudHdrScale : FlowerEmissionHdrScale;
+            Color hdrEmission = emission * hdrScale;
 
             for (int i = 0; i < flowerRenderers.Count; i++)
             {
@@ -598,7 +604,7 @@ namespace PaiSho.Game
             {
                 harmonyAuraRenderer.material.color = aura;
                 if (harmonyAuraRenderer.material.HasProperty(EmissionColorId))
-                    harmonyAuraRenderer.material.SetColor(EmissionColorId, aura * 3.6f);
+                    harmonyAuraRenderer.material.SetColor(EmissionColorId, aura * 1.4f);
             }
 
             if (harmonyOuterRenderer != null)
@@ -607,7 +613,7 @@ namespace PaiSho.Game
                 outer.a = 0.28f + 0.22f * pulse * intensity;
                 harmonyOuterRenderer.material.color = outer;
                 if (harmonyOuterRenderer.material.HasProperty(EmissionColorId))
-                    harmonyOuterRenderer.material.SetColor(EmissionColorId, outer * 2.8f);
+                    harmonyOuterRenderer.material.SetColor(EmissionColorId, outer * 1.15f);
             }
         }
 
@@ -791,7 +797,7 @@ namespace PaiSho.Game
             if (visual == null)
                 return;
 
-            Color emission = ResolveSpringGlow(owner) * 1.15f;
+            Color emission = ResolveSpringGlow(owner) * SpringBudEmissionScale * SpringBudHdrScale;
 
             foreach (Renderer renderer in visual.GetComponentsInChildren<Renderer>(true))
             {
@@ -807,9 +813,9 @@ namespace PaiSho.Game
                 material.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
 
                 var block = new MaterialPropertyBlock();
-                block.SetColor(EmissionColorId, emission * 3.2f);
+                block.SetColor(EmissionColorId, emission);
                 renderer.SetPropertyBlock(block);
-                material.SetColor(EmissionColorId, emission * 3.2f);
+                material.SetColor(EmissionColorId, emission);
             }
         }
     }

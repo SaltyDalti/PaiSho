@@ -241,7 +241,7 @@ namespace PaiSho
                 : isCapture
                     ? JapaneseTheme.CaptureMarker
                     : JapaneseTheme.MoveMarker;
-            ApplyGemColor(dot.GetComponent<Renderer>(), dotColor, 0.92f, isCapture ? 1.15f : 0.85f);
+            ApplyGemColor(dot.GetComponent<Renderer>(), dotColor, 0.92f, isCapture ? 0.42f : 0.28f);
 
             var highlight = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             highlight.name = "LacquerHighlight";
@@ -249,7 +249,7 @@ namespace PaiSho
             highlight.transform.localPosition = new Vector3(dotSize * 0.12f, dotSize * 0.18f, -dotSize * 0.08f);
             highlight.transform.localScale = Vector3.one * 0.22f;
             DestroyCollider(highlight);
-            ApplyGemColor(highlight.GetComponent<Renderer>(), new Color(1f, 1f, 1f, 0.55f), 1f, 0.6f);
+            ApplyGemColor(highlight.GetComponent<Renderer>(), new Color(1f, 1f, 1f, 0.4f), 1f, 0.12f);
 
             var shadow = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             shadow.name = "MarkerShadow";
@@ -298,7 +298,7 @@ namespace PaiSho
             diamond.transform.localRotation = Quaternion.Euler(45f, 45f, 0f);
             diamond.transform.localScale = Vector3.one * diamondSize;
             DestroyCollider(diamond);
-            ApplyGemColor(diamond.GetComponent<Renderer>(), JapaneseTheme.UnloadMarker, 0.92f, 0.85f);
+            ApplyGemColor(diamond.GetComponent<Renderer>(), JapaneseTheme.UnloadMarker, 0.92f, 0.28f);
 
             var animator = root.AddComponent<PaiSho.Game.OverlayAnimator>();
             animator.Configure(PaiSho.Game.OverlayAnimator.Style.GemPulse, diamond.transform, 2.4f + coordinate * 0.0003f, 0.1f);
@@ -329,7 +329,7 @@ namespace PaiSho
             disc.transform.localPosition = Vector3.zero;
             disc.transform.localScale = new Vector3(discDiameter, 0.005f, discDiameter);
             DestroyCollider(disc);
-            ApplyEmissiveColor(disc.GetComponent<Renderer>(), fill, isDisharmony ? 1.2f : 0.9f);
+            ApplyEmissiveColor(disc.GetComponent<Renderer>(), fill, isDisharmony ? 0.45f : 0.32f);
 
             float barLength = discDiameter * 0.72f;
             float barWidth = discDiameter * 0.1f;
@@ -348,7 +348,7 @@ namespace PaiSho
                 bar.transform.localRotation = Quaternion.Euler(0f, i * 90f, 45f);
                 bar.transform.localScale = new Vector3(barWidth, 0.006f, barLength);
                 DestroyCollider(bar);
-                ApplyEmissiveColor(bar.GetComponent<Renderer>(), barColor, 1.1f);
+                ApplyEmissiveColor(bar.GetComponent<Renderer>(), barColor, 0.38f);
             }
 
             return root;
@@ -381,7 +381,7 @@ namespace PaiSho
                     post.transform.localPosition = new Vector3(i * size * 0.32f, postH * 0.5f, 0f);
                     post.transform.localScale = new Vector3(postW, postH, postW);
                     DestroyCollider(post);
-                    ApplyEmissiveColor(post.GetComponent<Renderer>(), JapaneseTheme.Vermillion, 0.9f);
+                    ApplyEmissiveColor(post.GetComponent<Renderer>(), JapaneseTheme.Vermillion, 0.35f);
                 }
 
                 var lintel = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -390,7 +390,7 @@ namespace PaiSho
                 lintel.transform.localPosition = new Vector3(0f, postH * 0.92f, 0f);
                 lintel.transform.localScale = new Vector3(size * 0.72f, postW * 0.8f, postW);
                 DestroyCollider(lintel);
-                ApplyEmissiveColor(lintel.GetComponent<Renderer>(), JapaneseTheme.Vermillion, 0.85f);
+                ApplyEmissiveColor(lintel.GetComponent<Renderer>(), JapaneseTheme.Vermillion, 0.32f);
             }
 
             var animator = root.AddComponent<PaiSho.Game.OverlayAnimator>();
@@ -427,7 +427,7 @@ namespace PaiSho
             shaft.transform.localPosition = new Vector3(0f, 0f, size * 0.15f);
             shaft.transform.localScale = new Vector3(size * 0.18f, 0.006f, size * 0.55f);
             DestroyCollider(shaft);
-            ApplyEmissiveColor(shaft.GetComponent<Renderer>(), JapaneseTheme.WheelArrow, 1f);
+            ApplyEmissiveColor(shaft.GetComponent<Renderer>(), JapaneseTheme.WheelArrow, 0.35f);
 
             var head = GameObject.CreatePrimitive(PrimitiveType.Cube);
             head.name = "ArrowHead";
@@ -436,7 +436,7 @@ namespace PaiSho
             head.transform.localRotation = Quaternion.Euler(0f, 45f, 0f);
             head.transform.localScale = new Vector3(size * 0.28f, 0.008f, size * 0.28f);
             DestroyCollider(head);
-            ApplyEmissiveColor(head.GetComponent<Renderer>(), JapaneseTheme.GoldLeaf, 1.1f);
+            ApplyEmissiveColor(head.GetComponent<Renderer>(), JapaneseTheme.GoldLeaf, 0.4f);
 
             var animator = root.AddComponent<PaiSho.Game.OverlayAnimator>();
             animator.Configure(PaiSho.Game.OverlayAnimator.Style.ArrowBob, root.transform, 2.2f, 0.12f);
@@ -563,7 +563,7 @@ namespace PaiSho
                 barX.transform.localPosition = corner + new Vector3(sx * arm * 0.5f, 0f, 0f);
                 barX.transform.localScale = new Vector3(arm, thick, thick * 0.7f);
                 DestroyCollider(barX);
-                ApplyEmissiveColor(barX.GetComponent<Renderer>(), accent, 1.05f);
+                ApplyEmissiveColor(barX.GetComponent<Renderer>(), accent, 0.38f);
 
                 var barZ = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 barZ.name = $"RingBarZ{i}";
@@ -571,7 +571,7 @@ namespace PaiSho
                 barZ.transform.localPosition = corner + new Vector3(0f, 0f, sz * arm * 0.5f);
                 barZ.transform.localScale = new Vector3(thick * 0.7f, thick, arm);
                 DestroyCollider(barZ);
-                ApplyEmissiveColor(barZ.GetComponent<Renderer>(), accent, 1.05f);
+                ApplyEmissiveColor(barZ.GetComponent<Renderer>(), accent, 0.38f);
             }
 
             var animator = root.AddComponent<PaiSho.Game.OverlayAnimator>();
@@ -587,7 +587,7 @@ namespace PaiSho
             disc.transform.position = worldPosition;
             disc.transform.localScale = new Vector3(diameter, 0.004f, diameter);
             DestroyCollider(disc);
-            ApplyEmissiveColor(disc.GetComponent<Renderer>(), color, 0.85f);
+            ApplyEmissiveColor(disc.GetComponent<Renderer>(), color, 0.28f);
             return disc;
         }
 
@@ -598,7 +598,7 @@ namespace PaiSho
             disc.transform.localPosition = new Vector3(0f, localY, 0f);
             disc.transform.localScale = new Vector3(diameter, 0.004f, diameter);
             DestroyCollider(disc);
-            ApplyEmissiveColor(disc.GetComponent<Renderer>(), color, 0.85f);
+            ApplyEmissiveColor(disc.GetComponent<Renderer>(), color, 0.28f);
             return disc;
         }
 
@@ -616,7 +616,7 @@ namespace PaiSho
             beam.transform.rotation = Quaternion.LookRotation(delta.normalized, Vector3.up);
             beam.transform.localScale = new Vector3(width, 0.008f, length);
             DestroyCollider(beam);
-            ApplyEmissiveColor(beam.GetComponent<Renderer>(), color, 1.1f);
+            ApplyEmissiveColor(beam.GetComponent<Renderer>(), color, 0.4f);
             SetRenderQueue(beam.GetComponent<Renderer>(), 2990);
             return beam;
         }
@@ -637,7 +637,7 @@ namespace PaiSho
             bead.transform.position = mid;
             bead.transform.localScale = Vector3.one * beadSize;
             DestroyCollider(bead);
-            ApplyEmissiveColor(bead.GetComponent<Renderer>(), Color.Lerp(color, JapaneseTheme.GoldLeaf, 0.45f), 1.25f);
+            ApplyEmissiveColor(bead.GetComponent<Renderer>(), Color.Lerp(color, JapaneseTheme.GoldLeaf, 0.45f), 0.45f);
             SetRenderQueue(bead.GetComponent<Renderer>(), 2995);
 
             var pulse = root.AddComponent<PaiSho.Game.OverlayAnimator>();
@@ -663,7 +663,7 @@ namespace PaiSho
                          ?? Shader.Find("Standard");
 
             var material = new Material(shader);
-            ConfigureTransparentMaterial(material, color, gameplay ? 0.9f : 1.2f);
+            ConfigureTransparentMaterial(material, color, gameplay ? 0.32f : 0.45f);
             material.renderQueue = 3100;
             return material;
         }

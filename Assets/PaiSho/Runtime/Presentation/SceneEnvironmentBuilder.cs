@@ -81,9 +81,9 @@ namespace PaiSho
             volume.profile = profile;
 
             var bloom = profile.Add<Bloom>(true);
-            bloom.intensity.Override(0.42f);
-            bloom.threshold.Override(0.78f);
-            bloom.scatter.Override(0.72f);
+            bloom.intensity.Override(0.22f);
+            bloom.threshold.Override(0.95f);
+            bloom.scatter.Override(0.55f);
 
             var vignette = profile.Add<Vignette>(true);
             vignette.intensity.Override(0.28f);
