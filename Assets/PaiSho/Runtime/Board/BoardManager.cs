@@ -675,6 +675,8 @@ namespace PaiSho.Board
                 {
                     // Calibrate → FineAlign → remeasure → FineAlign again so CoordinateToWorld
                     // stays locked to GateForeign/GateHome after the final CellSpacing write.
+                    // WebGL: FineAlignBoardModel + EnsureBoardModelMaterialTweaks are no-ops
+                    // (HJ-25 Safari invoke_iii); gate-pitch from CreateModelBoardSurface stands.
                     WoodTheme.FineAlignBoardModel(placedModel.gameObject, boardLayout);
                     if (WoodTheme.TryMeasureNineteenByNineteenGridSpan(placedModel.gameObject, out float span))
                     {
@@ -690,7 +692,9 @@ namespace PaiSho.Board
                     // CreateModelBoardSurface already tweaked materials; re-apply after align so
                     // neutral tiling / lighten / Light↔Dark swap always win on Resources path.
                     WoodTheme.EnsureBoardModelMaterialTweaks(boardLayout, placedModel.gameObject);
+#if !UNITY_WEBGL || UNITY_EDITOR
                     WoodTheme.LogGateLayoutAlignment(boardLayout, placedModel.gameObject);
+#endif
                     DebugLogger.Log(
                         $"Resources board seated: spacing={boardLayout.CellSpacing:F3}, " +
                         $"surfaceY={boardLayout.TileHeight:F3}, span={boardLayout.GridSpan:F3}");

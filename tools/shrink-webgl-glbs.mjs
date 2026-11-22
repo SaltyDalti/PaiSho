@@ -27,10 +27,12 @@ const root = join(__dirname, '..');
 const boardStandOnly = process.argv.includes('--board-stand-only');
 const stripGardensRequested = process.argv.includes('--strip-gardens');
 const forceStripGardens = process.argv.includes('--force-strip-gardens');
+const decimateGardens = process.argv.includes('--decimate-gardens');
 if (stripGardensRequested && !forceStripGardens) {
   console.error(
     'Refusing --strip-gardens: Garden* meshes are the visible board surface. ' +
-      'Pass --force-strip-gardens only for non-shipping experiments.',
+      'Pass --force-strip-gardens only for non-shipping experiments. ' +
+      'Prefer --decimate-gardens to keep Garden* visible while cutting tris/textures.',
   );
   process.exit(2);
 }
@@ -114,6 +116,71 @@ function stripGardenNodes(doc) {
   }
   for (const node of remove) node.dispose();
   console.log(`stripped ${remove.length} Garden* nodes`);
+}
+
+/**
+ * Soft-decimate Garden* meshes only — Gate and BoardLines stay locked for CellSpacing.
+ * Uses MeshoptSimplifier per-primitive so simplify() never walks the whole Board doc.
+ * HJ-25: prefer texture resize for Garden* weight; mesh simplify is opt-in and conservative
+ * (LockBorder + mild ratio) after a bad aggressive pass painted black garden shards.
+ */
+async function decimateGardenMeshes(doc, libs, ratio = 0.55, targetError = 0.02) {
+  const { MeshoptSimplifier } = libs;
+  await MeshoptSimplifier.ready;
+  const lockBorder =
+    typeof MeshoptSimplifier.LockBorder === 'number'
+      ? MeshoptSimplifier.LockBorder
+      : 1;
+
+  const gardenMeshes = new Set();
+  for (const node of doc.getRoot().listNodes()) {
+    const name = node.getName() || '';
+    if (!/^Garden/i.test(name)) continue;
+    const mesh = node.getMesh();
+    if (mesh) gardenMeshes.add(mesh);
+  }
+
+  let primCount = 0;
+  let beforeTris = 0;
+  let afterTris = 0;
+
+  for (const mesh of gardenMeshes) {
+    for (const prim of mesh.listPrimitives()) {
+      ensureIndexedTriangles(doc, prim);
+      positionWeld(prim, 5);
+
+      const pos = prim.getAttribute('POSITION');
+      const idx = prim.getIndices();
+      if (!pos || !idx) continue;
+
+      const posA = pos.getArray();
+      const idxA = Uint32Array.from(idx.getArray());
+      beforeTris += idxA.length / 3;
+
+      const targetCount = Math.max(3, Math.floor((idxA.length / 3) * ratio)) * 3;
+      const [dst, error] = MeshoptSimplifier.simplify(
+        idxA,
+        posA,
+        3,
+        targetCount,
+        targetError,
+        lockBorder,
+      );
+      void error;
+      if (!dst || dst.length < 3) continue;
+
+      const out =
+        pos.getCount() < 65536 ? new Uint16Array(dst) : new Uint32Array(dst);
+      idx.setArray(out);
+      afterTris += out.length / 3;
+      computeVertexNormals(doc, prim);
+      primCount++;
+    }
+  }
+
+  console.log(
+    `decimate-gardens: ${primCount} prims, tris ${Math.round(beforeTris)} → ${Math.round(afterTris)} @ ratio=${ratio}`,
+  );
 }
 
 /** Face-area-weighted vertex normals. Keeps indices (unlike normals({overwrite})). */
@@ -213,6 +280,7 @@ async function processFile(rel, texMax, kind) {
 
   if (kind === 'board') {
     if (stripGardens) stripGardenNodes(doc);
+    if (decimateGardens) await decimateGardenMeshes(doc, libs);
     await doc.transform(libs.fns.dedup(), libs.fns.prune());
   } else if (kind === 'stand') {
     await meshSimplify(doc, libs, 0.08, 0.04);
@@ -230,8 +298,11 @@ async function processFile(rel, texMax, kind) {
 async function main() {
   ensureDeps();
 
-  // Board: texture-only (+ optional Garden* strip). Never mesh-simplify gates.
-  await processFile('Assets/Resources/Board/Board.glb', 1024, 'board');
+  // Board: texture resize (+ optional Garden* mesh decimate/strip). Never mesh-simplify gates.
+  // Gardens restore left Board albedo at 4K (~16MB); 768 cuts weight while staying visible.
+  // --decimate-gardens also enables mild Garden* mesh simplify; default path is texture-only.
+  const boardTexMax = 768;
+  await processFile('Assets/Resources/Board/Board.glb', boardTexMax, 'board');
 
   // PlayerStand: index → weld → simplify (was 57k unindexed TRIANGLES).
   await processFile('Assets/Resources/Board/PlayerStand.glb', 512, 'stand');
