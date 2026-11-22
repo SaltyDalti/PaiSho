@@ -482,9 +482,10 @@ namespace PaiSho.Game
                     towardBoard = -standTransform.forward;
                 towardBoard.Normalize();
 
-                float inset = Mathf.Min(world.extents.x, world.extents.z) * 0.42f;
+                // Pull past the AABB hollow onto the board-facing rim of the crescent.
+                float inset = Mathf.Min(world.extents.x, world.extents.z) * 0.82f;
                 Vector3 seatWorld = world.center + towardBoard * inset;
-                seatWorld.y = world.max.y + layout.PieceSurfaceLift + 0.02f;
+                seatWorld.y = world.max.y + layout.PieceSurfaceLift + 0.03f;
                 tray.Root.position = seatWorld;
                 tray.Root.rotation = Quaternion.LookRotation(-towardBoard, Vector3.up);
             }
