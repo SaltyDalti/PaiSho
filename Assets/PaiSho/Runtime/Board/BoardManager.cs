@@ -112,7 +112,13 @@ namespace PaiSho.Board
             if (reference == null)
                 return;
 
+            // Measuring instantiates the full tile GLB; on WebGL Safari that adds more
+            // JS↔wasm traffic on the same boot path as board/stand material work.
+#if UNITY_WEBGL && !UNITY_EDITOR
+            var metrics = WoodTheme.PiecePrefabMetrics.Default;
+#else
             var metrics = WoodTheme.MeasurePiecePrefab(reference);
+#endif
             if (boardLayout.UseModelBoard)
             {
                 // Centered prefab pivots: AlignPrefabToSurface seats the bottom on the surface.
