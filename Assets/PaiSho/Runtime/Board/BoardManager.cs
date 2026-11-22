@@ -348,37 +348,41 @@ namespace PaiSho.Board
                 BoardAlignmentDefaults.ApplyTo(boardLayout);
 
             Transform placedModel = FindBoardModel(gridRoot) ?? FindSceneBoardModel();
-            if (placedModel != null)
+            // GamePlay.unity often keeps an empty BoardModelSurface shell (missing PrefabInstance
+            // mesh GUIDs). Returning true here skipped Resources/Board/Board.glb and left a hole.
+            if (placedModel == null || !HasPlayableBoardMesh(placedModel.gameObject))
             {
-                gridRoot = placedModel.parent != null && placedModel.parent.name == "BoardModelSurface"
-                    ? placedModel.parent
-                    : placedModel;
-
-                // Match logical grid to the visible board (spacing + surface height).
-                if (WoodTheme.CalibrateLayoutToSceneBoard(boardLayout, placedModel.gameObject))
-                {
-                    DebugLogger.Log(
-                        $"Calibrated layout from scene board: spacing={boardLayout.CellSpacing:F3}, " +
-                        $"surfaceY={boardLayout.TileHeight:F3}, span={boardLayout.GridSpan:F3}, " +
-                        $"yaw={boardLayout.GridYawDegrees:F1}°");
-                }
-                else
-                {
-                    DebugLogger.LogWarning(
-                        "Could not calibrate layout from scene board — pieces may sit under the mesh.");
-                }
-
-                // Always preload materials (even when preserving transforms) to avoid cyan flash.
-                WoodTheme.PreloadVisualMaterials(placedModel.gameObject);
-                WoodTheme.HideSquareBoardBaseAndEmbeddedStand(placedModel.gameObject);
-
-                if (!preserveSceneAuthored)
-                    WoodTheme.RefreshPrebuiltBoardVisuals(boardLayout, placedModel.gameObject);
+                DebugLogger.LogWarning(
+                    "Prebuilt board mesh missing or incomplete (need Gate* + Garden*); " +
+                    "falling back to Resources Board.glb.");
+                // Keep empty BoardModelSurface in gridRoot so BuildBoardVisuals can Destroy it.
+                return false;
             }
-            else if (gridRoot != null)
+
+            gridRoot = placedModel.parent != null && placedModel.parent.name == "BoardModelSurface"
+                ? placedModel.parent
+                : placedModel;
+
+            // Match logical grid to the visible board (spacing + surface height).
+            if (WoodTheme.CalibrateLayoutToSceneBoard(boardLayout, placedModel.gameObject))
             {
-                WoodTheme.PreloadVisualMaterials(gridRoot.gameObject);
+                DebugLogger.Log(
+                    $"Calibrated layout from scene board: spacing={boardLayout.CellSpacing:F3}, " +
+                    $"surfaceY={boardLayout.TileHeight:F3}, span={boardLayout.GridSpan:F3}, " +
+                    $"yaw={boardLayout.GridYawDegrees:F1}°");
             }
+            else
+            {
+                DebugLogger.LogWarning(
+                    "Could not calibrate layout from scene board — pieces may sit under the mesh.");
+            }
+
+            // Always preload materials (even when preserving transforms) to avoid cyan flash.
+            WoodTheme.PreloadVisualMaterials(placedModel.gameObject);
+            WoodTheme.HideSquareBoardBaseAndEmbeddedStand(placedModel.gameObject);
+
+            if (!preserveSceneAuthored)
+                WoodTheme.RefreshPrebuiltBoardVisuals(boardLayout, placedModel.gameObject);
 
             if (hostPlayerStand != null)
             {
@@ -461,6 +465,23 @@ namespace PaiSho.Board
             }
 
             return hasLines || hasGate;
+        }
+
+        /// <summary>
+        /// Prebuilt bind requires gates (CellSpacing) and Garden* (carved visible surface).
+        /// </summary>
+        private static bool HasPlayableBoardMesh(GameObject root)
+        {
+            if (!HasBoardMarkers(root))
+                return false;
+
+            foreach (Transform child in root.GetComponentsInChildren<Transform>(true))
+            {
+                if (child.name.StartsWith("Garden", System.StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+
+            return false;
         }
 
         private static Transform FindChildByName(Transform root, string objectName)
