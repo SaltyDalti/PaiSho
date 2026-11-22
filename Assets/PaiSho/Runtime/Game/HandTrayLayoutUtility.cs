@@ -67,13 +67,19 @@ namespace PaiSho.Game
             if (sample != null)
             {
                 // Exact authored SampleTile world pose + lossy scale (same as capture pots).
+                // Do not re-activate SampleTiles on WebGL — that reintroduced Safari callMain
+                // OOB after 0.1.14 kept fourteen tile prefabs alive (HJ-31).
                 BoardSideLayoutUtility.ApplySampleTilePose(visual.transform, sample, tilesRoot);
+#if !UNITY_WEBGL || UNITY_EDITOR
                 sample.gameObject.SetActive(true);
                 foreach (Renderer renderer in sample.GetComponentsInChildren<Renderer>(true))
                 {
                     if (renderer != null)
                         renderer.enabled = false;
                 }
+#else
+                sample.gameObject.SetActive(false);
+#endif
             }
             else
             {
