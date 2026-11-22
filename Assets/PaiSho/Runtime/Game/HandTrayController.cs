@@ -483,8 +483,8 @@ namespace PaiSho.Game
                 towardBoard.Normalize();
 
                 // Crescent opens toward the board: AABB center sits in the hollow. Move
-                // away from the board onto the visible outer rim where tiles should sit.
-                float inset = Mathf.Min(world.extents.x, world.extents.z) * 0.55f;
+                // away from the board to the AABB outer face (visible rim).
+                float inset = Mathf.Min(world.extents.x, world.extents.z) * 0.95f;
                 Vector3 seatWorld = world.center - towardBoard * inset;
                 seatWorld.y = world.max.y + layout.PieceSurfaceLift + 0.03f;
                 tray.Root.position = seatWorld;
