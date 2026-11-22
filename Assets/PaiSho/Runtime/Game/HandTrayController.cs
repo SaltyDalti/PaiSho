@@ -1190,8 +1190,17 @@ namespace PaiSho.Game
 
         private bool UsesSceneSlotMarkers(TrayBinding tray)
         {
-            // Prefer Slot_* whenever present — WebGL keeps markers after Resources stand rebuild.
-            return tray.Root != null && GameBoardSetup.HasBakedSlotMarkers(tray.Root);
+            if (tray.Root == null || !GameBoardSetup.HasBakedSlotMarkers(tray.Root))
+                return false;
+
+#if UNITY_WEBGL && !UNITY_EDITOR
+            // HandTrayAlignmentDefaults Slot_* locals (±3) were authored against the pre-shrink
+            // PlayerStand mesh. After Resources rebuild those locals explode in world space and
+            // spring tiles land off the rack — use scale-aware shelf placement instead.
+            return false;
+#else
+            return true;
+#endif
         }
 
         private bool IsDesktopPreservedTray(TrayBinding tray)
