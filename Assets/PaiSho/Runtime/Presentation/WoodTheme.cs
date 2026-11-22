@@ -1968,41 +1968,6 @@ namespace PaiSho
             }
         }
 
-        /// <summary>
-        /// Crescent PlayerStand AABB center is hollow (opens toward the board). Offset along the
-        /// short local axis onto the solid outer rim so shelf-seated tiles sit on wood, not floor.
-        /// </summary>
-        public static Vector3 GetCrescentRimLocalOffset(PlayerStandAnchor anchor, BoardLayout layout)
-        {
-            if (layout == null || anchor.StandTransform == null)
-                return Vector3.zero;
-
-            Bounds localBounds = anchor.LocalBounds;
-            Vector3 shelfAxis = anchor.LocalTileAxis;
-            Vector3 depthAxis = Mathf.Abs(shelfAxis.x) >= 0.5f ? Vector3.forward : Vector3.right;
-
-            Transform mesh = anchor.StandTransform;
-            Vector3 centerWorld = mesh.TransformPoint(localBounds.center);
-            Vector3 towardBoard = layout.CoordinateToWorld(BoardUtils.MiddleGate) - centerWorld;
-            towardBoard.y = 0f;
-            if (towardBoard.sqrMagnitude < 0.0001f)
-                towardBoard = mesh.forward;
-            towardBoard.Normalize();
-
-            // Crescent opens toward the board → solid rim is away from the board.
-            Vector3 awayFromBoard = -towardBoard;
-            Vector3 depthWorld = mesh.TransformDirection(depthAxis);
-            if (Vector3.Dot(depthWorld, awayFromBoard) < 0f)
-                depthAxis = -depthAxis;
-
-            float depthExtent = Mathf.Abs(depthAxis.x) >= 0.5f
-                ? localBounds.extents.x
-                : localBounds.extents.z;
-
-            // ~55% of center→face puts tiles on the carved rim, not the hollow or past the AABB.
-            return depthAxis * (depthExtent * 0.55f);
-        }
-
         public readonly struct PlayerStandAnchor
         {
             public readonly Transform StandTransform;

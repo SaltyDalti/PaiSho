@@ -460,29 +460,22 @@ namespace PaiSho.Game
             if (standTransform == null)
                 return false;
 
-            // Desktop preserve: keep authored local pose under the scene stand.
-            // WebGL Resources PlayerStand (and shrunk PlayerStand.glb) no longer matches the
-            // scene-authored local pose — reseat to stand topCenter, but still use Slot_*.
-            if (IsDesktopPreservedTray(tray))
+            // Authored Slot_* trays keep their stand-root local pose (Desktop scene + WebGL
+            // reattach/prefab restore). Do not reseat to mesh AABB — that was HJ-26/27 drift.
+            if (UsesSceneSlotMarkers(tray) || IsDesktopPreservedTray(tray))
+            {
+                EnsureTrayParentedToStandRoot(tray, standTransform);
                 return BindStandAnchorFromSceneTray(tray, standTransform);
+            }
 
             if (!WoodTheme.TryGetPlayerStandAnchor(standTransform.gameObject, tray.Owner, out tray.StandAnchor))
                 return false;
 
             tray.HasStandAnchor = true;
-            Transform stand = tray.StandAnchor.StandTransform;
-            Bounds localBounds = tray.StandAnchor.LocalBounds;
-
-            tray.Root.SetParent(stand, false);
-            // Keep tray root at mesh-local topCenter. Crescent hollow is handled when seating
-            // tiles (GetCrescentRimLocalOffset) — moving the whole tray to the AABB outer face
-            // still missed the carved rim and parked spring tiles on the floor (HJ-27 live).
-            Vector3 topCenter = new Vector3(
-                localBounds.center.x,
-                localBounds.max.y + layout.PieceSurfaceLift + 0.01f,
-                localBounds.center.z);
-            tray.Root.localPosition = topCenter;
-            tray.Root.localRotation = Quaternion.identity;
+            tray.Root.SetParent(standTransform, false);
+            tray.Root.localPosition = HandTrayAlignmentDefaults.GetAuthoredTrayLocalPosition(tray.Owner);
+            tray.Root.localRotation = Quaternion.Euler(HandTrayAlignmentDefaults.GetAuthoredTrayLocalEuler(tray.Owner));
+            tray.Root.localScale = HandTrayAlignmentDefaults.AuthoredTrayLocalScale;
 
             tray.DragSurfaceY = tray.Root.position.y + 0.05f;
             tray.DragPlane = new Plane(Vector3.up, new Vector3(0f, tray.DragSurfaceY, 0f));
@@ -491,14 +484,10 @@ namespace PaiSho.Game
 
         private void ApplyTrayTunerOffset(TrayBinding tray)
         {
-            if (tray.Root == null || IsDesktopPreservedTray(tray))
+            // Authored Slot_* / SampleTile trays already include their stand-root pose.
+            if (tray.Root == null || UsesSceneSlotMarkers(tray) || IsDesktopPreservedTray(tray))
                 return;
 
-#if UNITY_WEBGL && !UNITY_EDITOR
-            // Desktop TrayLocalOffset was authored in scene-stand space. Applied on top of
-            // Resources mesh topCenter it shoves spring tiles onto the floor beside the rack.
-            return;
-#else
             Vector3 offset;
             Vector3 euler;
             if (tunerPreviewActive && activeTuner != null)
@@ -516,7 +505,6 @@ namespace PaiSho.Game
             tray.Root.localRotation *= Quaternion.Euler(euler);
             tray.DragSurfaceY = tray.Root.position.y + 0.05f;
             tray.DragPlane = new Plane(Vector3.up, new Vector3(0f, tray.DragSurfaceY, 0f));
-#endif
         }
 
         private void PositionTrayFallback(TrayBinding tray)
@@ -644,12 +632,6 @@ namespace PaiSho.Game
                     else
                     {
                         Vector3 localPosition = tileAxis * (startOffset + i * localSpacing);
-#if UNITY_WEBGL && !UNITY_EDITOR
-                        // Shelf axis alone leaves tiles in the crescent hollow (floor). Nudge onto
-                        // the solid outer rim in stand-local space (HJ-27).
-                        if (tray.HasStandAnchor)
-                            localPosition += WoodTheme.GetCrescentRimLocalOffset(tray.StandAnchor, layout);
-#endif
                         visual.transform.SetPositionAndRotation(
                             tray.Root.TransformPoint(localPosition),
                             tray.Root.rotation);
@@ -697,13 +679,7 @@ namespace PaiSho.Game
             if (tunerPreviewActive && activeTuner != null)
                 return activeTuner.useManualSlotPositions;
 
-#if UNITY_WEBGL && !UNITY_EDITOR
-            // Manual Slot_* locals (±3) are pre-shrink stand space; on WebGL use the
-            // HasStandAnchor shelf axis so spring tiles sit on the live rack.
-            return false;
-#else
             return HandTrayAlignmentDefaults.UseManualSlotPositions;
-#endif
         }
 
         private Vector3 GetSlotPosition(int slotIndex, Player player)
@@ -1216,17 +1192,7 @@ namespace PaiSho.Game
 
         private bool UsesSceneSlotMarkers(TrayBinding tray)
         {
-            if (tray.Root == null || !GameBoardSetup.HasBakedSlotMarkers(tray.Root))
-                return false;
-
-#if UNITY_WEBGL && !UNITY_EDITOR
-            // HandTrayAlignmentDefaults Slot_* locals (±3) were authored against the pre-shrink
-            // PlayerStand mesh. After Resources rebuild those locals explode in world space and
-            // spring tiles land off the rack — use scale-aware shelf placement instead.
-            return false;
-#else
-            return true;
-#endif
+            return tray.Root != null && GameBoardSetup.HasBakedSlotMarkers(tray.Root);
         }
 
         private bool IsDesktopPreservedTray(TrayBinding tray)
@@ -1240,6 +1206,38 @@ namespace PaiSho.Game
             return boardSetup != null
                 && boardSetup.PreserveSceneAuthored
                 && tray.Root.GetComponentInParent<GameBoardSetup>() != null;
+        }
+
+        private static void EnsureTrayParentedToStandRoot(TrayBinding tray, Transform standRoot)
+        {
+            if (tray.Root == null || standRoot == null)
+                return;
+
+            // Authored trays belong under the stand root. If a prior WebGL bake left them under
+            // the mesh child, re-parent while preserving world pose then restore authored locals
+            // when the tray still carries Slot_* markers from the prefab/scene.
+            if (tray.Root.parent == standRoot)
+                return;
+
+            Vector3 localPosition = HandTrayAlignmentDefaults.GetAuthoredTrayLocalPosition(tray.Owner);
+            Quaternion localRotation = Quaternion.Euler(HandTrayAlignmentDefaults.GetAuthoredTrayLocalEuler(tray.Owner));
+            Vector3 localScale = HandTrayAlignmentDefaults.AuthoredTrayLocalScale;
+
+            // Prefer whatever local pose was already authored under a stand-like parent.
+            if (tray.Root.parent != null &&
+                (tray.Root.parent.name == "PlayerStand" ||
+                 tray.Root.parent.name == "PlayerStandOpponent" ||
+                 tray.Root.parent == standRoot))
+            {
+                localPosition = tray.Root.localPosition;
+                localRotation = tray.Root.localRotation;
+                localScale = tray.Root.localScale;
+            }
+
+            tray.Root.SetParent(standRoot, false);
+            tray.Root.localPosition = localPosition;
+            tray.Root.localRotation = localRotation;
+            tray.Root.localScale = localScale;
         }
 
         private static bool BindStandAnchorFromSceneTray(TrayBinding tray, Transform standTransform)
