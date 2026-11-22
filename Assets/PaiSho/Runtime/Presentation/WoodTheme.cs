@@ -2854,29 +2854,23 @@ namespace PaiSho
         private static bool ValidateBoardPrefab(GameObject prefab, out GameObject visual)
         {
             visual = null;
-            GameObject probe = Object.Instantiate(prefab);
-            try
-            {
-                // WebGL builds may omit BoardLines (runtime points draw the grid).
-                // Gate meshes are required for CellSpacing calibration.
-                bool hasGates = ContainsBoardPart(probe, "GateHome")
-                    && ContainsBoardPart(probe, "GateForeign");
-                bool hasLinesOrBoard = ContainsBoardPart(probe, "BoardLines")
-                    || ContainsBoardPart(probe, "Board");
-                if (!hasGates || !hasLinesOrBoard)
-                    return false;
+            if (prefab == null)
+                return false;
 
-                visual = prefab;
-                return true;
-            }
-            finally
-            {
-#if UNITY_EDITOR
-                Object.DestroyImmediate(probe);
-#else
-                Object.Destroy(probe);
-#endif
-            }
+            // Walk the prefab asset hierarchy — do not Instantiate. On WebGL Safari,
+            // cloning the full Board GLB just to check names doubles mesh work during
+            // the same boot path that already stress longjmp invoke_* trampolines.
+            // WebGL builds may omit BoardLines (runtime points draw the grid).
+            // Gate meshes are required for CellSpacing calibration.
+            bool hasGates = ContainsBoardPart(prefab, "GateHome")
+                && ContainsBoardPart(prefab, "GateForeign");
+            bool hasLinesOrBoard = ContainsBoardPart(prefab, "BoardLines")
+                || ContainsBoardPart(prefab, "Board");
+            if (!hasGates || !hasLinesOrBoard)
+                return false;
+
+            visual = prefab;
+            return true;
         }
 
         private static bool ContainsBoardPart(GameObject root, string partName)

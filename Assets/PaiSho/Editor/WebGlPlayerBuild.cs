@@ -40,20 +40,17 @@ namespace PaiSho.EditorTools
             PlayerSettings.WebGL.decompressionFallback = true;
             PlayerSettings.WebGL.initialMemorySize = 256;
             PlayerSettings.WebGL.maximumMemorySize = 2048;
-            // None avoids invoke_* exception trampolines that Safari turns into
-            // RangeError: Maximum call stack size exceeded loops on heavy meshes.
-            // Also persisted in ProjectSettings + WebGlExceptionSupportBuildStep so
-            // Editor "Build" UI builds cannot ship ExplicitlyThrown by accident.
-            PlayerSettings.WebGL.exceptionSupport = WebGLExceptionSupport.None;
+            PlayerSettings.WebGL.nameFilesAsHashes = false;
+
+            // Safari stack levers (see WebGlExceptionSupportBuildStep). None does not
+            // remove invoke_* on Unity 6 — those are longjmp trampolines (HJ-13).
+            WebGlExceptionSupportBuildStep.ApplySafariWebGlPlayerSettings();
             if (PlayerSettings.WebGL.exceptionSupport != WebGLExceptionSupport.None)
             {
-                Debug.LogError("WebGL exceptionSupport must be None for Safari; refusing build.");
+                Debug.LogError("WebGL exceptionSupport must be None for portfolio WebGL; refusing build.");
                 EditorApplication.Exit(4);
                 return;
             }
-
-            PlayerSettings.WebGL.dataCaching = true;
-            PlayerSettings.WebGL.nameFilesAsHashes = false;
 
             if (!EditorUserBuildSettings.SwitchActiveBuildTarget(NamedBuildTarget.WebGL, BuildTarget.WebGL))
             {

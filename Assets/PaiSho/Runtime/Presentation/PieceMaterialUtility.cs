@@ -439,8 +439,9 @@ namespace PaiSho
             if (shaderName.Contains("Error") || shaderName.Contains("InternalError"))
                 return true;
 
-            // shader.isSupported can throw / blow the JS stack on Safari WebGL when
-            // combined with exception trampolines (invoke_iii). Skip the probe there.
+            // shader.isSupported can throw into Emscripten longjmp invoke_* trampolines
+            // (still present under WebGLExceptionSupport.None on Unity 6) and blow Safari's
+            // JS stack. Skip the probe in the WebGL player.
 #if !UNITY_WEBGL || UNITY_EDITOR
             if (!material.shader.isSupported)
                 return true;

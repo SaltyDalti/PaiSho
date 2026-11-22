@@ -7,13 +7,17 @@ using UnityEngine;
 namespace PaiSho.EditorTools
 {
     /// <summary>
-    /// Forces WebGLExceptionSupport.None on every WebGL player build (batch or Editor UI).
-    /// Safari turns ExplicitlyThrown invoke_* trampolines into RangeError stack overflows
-    /// on this project's board/mesh load path; ProjectSettings alone was still 1 while
-    /// WebGlPlayerBuild.Build set None — builds that skipped that method shipped trampolines.
+    /// Applies portfolio WebGL Safari levers on every WebGL player build (batch or Editor UI).
+    ///
+    /// HJ-13: On Unity 6000.0.47f1, WebGLExceptionSupport.None still leaves Emscripten
+    /// longjmp invoke_* trampolines (including invoke_iii). Absence of invoke_iii is NOT
+    /// a valid gate. Keep None anyway (smaller C++ EH), and also raise WASM stack +
+    /// prefer WebAssembly.Table interop.
     /// </summary>
     public sealed class WebGlExceptionSupportBuildStep : IPreprocessBuildWithReport
     {
+        public const string SafariEmscriptenArgs = "-sSTACK_SIZE=5MB";
+
         public int callbackOrder => 0;
 
         public void OnPreprocessBuild(BuildReport report)
@@ -21,10 +25,23 @@ namespace PaiSho.EditorTools
             if (report.summary.platform != BuildTarget.WebGL)
                 return;
 
-            PlayerSettings.WebGL.exceptionSupport = WebGLExceptionSupport.None;
+            ApplySafariWebGlPlayerSettings();
             Debug.Log(
-                "[WebGL] exceptionSupport forced to None (Safari invoke_* stack guard). " +
-                "After build, framework.js must not define invoke_iii.");
+                "[WebGL] Safari levers: exceptionSupport=None, " +
+                $"emscriptenArgs='{PlayerSettings.WebGL.emscriptenArgs}', " +
+                $"webAssemblyTable={PlayerSettings.WebGL.webAssemblyTable}, " +
+                $"dataCaching={PlayerSettings.WebGL.dataCaching}. " +
+                "Note: invoke_* longjmp trampolines remain under None on Unity 6 — do not gate on their absence.");
+        }
+
+        public static void ApplySafariWebGlPlayerSettings()
+        {
+            PlayerSettings.WebGL.exceptionSupport = WebGLExceptionSupport.None;
+            PlayerSettings.WebGL.emscriptenArgs = SafariEmscriptenArgs;
+            PlayerSettings.WebGL.webAssemblyTable = true;
+            // UnityCache on Safari has repeatedly served stale/corrupt *.unityweb after
+            // hosting fixes; portfolio player prefers fresh fetches + productVersion bumps.
+            PlayerSettings.WebGL.dataCaching = false;
         }
     }
 }
