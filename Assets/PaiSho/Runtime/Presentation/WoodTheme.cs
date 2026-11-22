@@ -1956,7 +1956,13 @@ namespace PaiSho
 
                 renderer.gameObject.SetActive(true);
                 renderer.enabled = true;
+#if UNITY_WEBGL && !UNITY_EDITOR
+                // dark_oak + EnsureMaterials-skip left stands as matte black silhouettes on
+                // live WebGL (HJ-26 "tray bakes weird"). Use a readable mid wood instead.
+                ApplyWood(renderer, new Color(0.55f, 0.38f, 0.24f), 0.42f);
+#else
                 ApplyTexturedWood(renderer, "Scene/dark_oak", FrameWood, 0.45f, 2.2f);
+#endif
             }
         }
 
