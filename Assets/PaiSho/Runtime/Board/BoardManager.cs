@@ -682,6 +682,13 @@ namespace PaiSho.Board
             {
                 // Desktop-tuned knobs first; gate pitch then locks CellSpacing to this GLB.
                 BoardAlignmentDefaults.ApplyTo(boardLayout);
+#if UNITY_WEBGL && !UNITY_EDITOR
+                // Desktop GridSpacingScale (≈0.895) shrinks CoordinateToWorld vs the Resources
+                // Board.glb gate pitch; FineAlign only translates, so stands/trays drift ~cells
+                // off the carved board (HJ-26 live: southΔ=northΔ≈4.5). Match mesh 1:1 on WebGL.
+                boardLayout.SetGridSpacingScale(1f);
+                boardLayout.SetTunerOverlay(1f, Vector2.zero, boardLayout.PointHeightOffset);
+#endif
 
                 var modelSurface = WoodTheme.CreateModelBoardSurface(
                     boardLayout, boardModel, boardSource, out float gridSpan, out float surfaceY);
