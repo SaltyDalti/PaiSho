@@ -2,7 +2,11 @@ using UnityEngine;
 
 namespace PaiSho.Board
 {
-    /// <summary>Board-point colliders stay active; intersection discs are dev/tuner only.</summary>
+    /// <summary>
+    /// Gameplay board-point style. Resources <c>Board.glb</c> omits BoardLines, so
+    /// intersection discs draw the grid (see WoodTheme.ValidateBoardPrefab). Colliders
+    /// stay active either way.
+    /// </summary>
     public static class BoardPointRuntimeStyle
     {
         private static BoardPointTunerSettings gameplay;
@@ -13,7 +17,7 @@ namespace PaiSho.Board
         {
             var s = new BoardPointTunerSettings
             {
-                showMarkers = false,
+                showMarkers = true,
                 showLabels = false,
                 colorByGarden = false,
                 markerDiameterScale = 0.135f,
