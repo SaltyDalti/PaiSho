@@ -688,6 +688,9 @@ namespace PaiSho.Board
                 // off the carved board (HJ-26 live: southΔ=northΔ≈4.5). Match mesh 1:1 on WebGL.
                 boardLayout.SetGridSpacingScale(1f);
                 boardLayout.SetTunerOverlay(1f, Vector2.zero, boardLayout.PointHeightOffset);
+                // CreateModelBoardSurface instances Board at Y=90; keep layout NS on the same
+                // world axis or FineAlign's average translation is a no-op and trays float.
+                boardLayout.SetGridYawDegrees(-90f);
 #endif
 
                 var modelSurface = WoodTheme.CreateModelBoardSurface(
