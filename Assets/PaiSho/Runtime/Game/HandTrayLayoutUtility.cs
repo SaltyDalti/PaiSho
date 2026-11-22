@@ -22,9 +22,16 @@ namespace PaiSho.Game
                 return null;
 
             Transform mesh = anchor.StandTransform;
+            Bounds localBounds = anchor.LocalBounds;
+#if UNITY_WEBGL && !UNITY_EDITOR
+            // Desktop TrayLocalOffset was authored against pre-shrink stands; on Resources
+            // PlayerStand it shoves the rack onto the floor beside the crescent (HJ-27).
+            Vector3 trayOffset = Vector3.zero;
+            Vector3 trayEuler = Vector3.zero;
+#else
             Vector3 trayOffset = HandTrayAlignmentDefaults.GetTrayLocalOffset(player);
             Vector3 trayEuler = HandTrayAlignmentDefaults.GetTrayLocalEuler(player);
-            Bounds localBounds = anchor.LocalBounds;
+#endif
 
             var trayObject = new GameObject(trayName);
             Transform trayRoot = trayObject.transform;
