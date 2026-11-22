@@ -677,7 +677,13 @@ namespace PaiSho.Game
             if (tunerPreviewActive && activeTuner != null)
                 return activeTuner.useManualSlotPositions;
 
+#if UNITY_WEBGL && !UNITY_EDITOR
+            // Manual Slot_* locals (±3) are pre-shrink stand space; on WebGL use the
+            // HasStandAnchor shelf axis so spring tiles sit on the live rack.
+            return false;
+#else
             return HandTrayAlignmentDefaults.UseManualSlotPositions;
+#endif
         }
 
         private Vector3 GetSlotPosition(int slotIndex, Player player)
