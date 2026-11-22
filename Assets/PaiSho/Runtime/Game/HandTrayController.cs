@@ -483,10 +483,14 @@ namespace PaiSho.Game
 
         private void ApplyTrayTunerOffset(TrayBinding tray)
         {
-            // WebGL Slot_* trays are reseated to stand topCenter; still allow default offset.
             if (tray.Root == null || IsDesktopPreservedTray(tray))
                 return;
 
+#if UNITY_WEBGL && !UNITY_EDITOR
+            // Desktop TrayLocalOffset was authored in scene-stand space. Applied on top of
+            // Resources mesh topCenter it shoves spring tiles onto the floor beside the rack.
+            return;
+#else
             Vector3 offset;
             Vector3 euler;
             if (tunerPreviewActive && activeTuner != null)
@@ -504,6 +508,7 @@ namespace PaiSho.Game
             tray.Root.localRotation *= Quaternion.Euler(euler);
             tray.DragSurfaceY = tray.Root.position.y + 0.05f;
             tray.DragPlane = new Plane(Vector3.up, new Vector3(0f, tray.DragSurfaceY, 0f));
+#endif
         }
 
         private void PositionTrayFallback(TrayBinding tray)
