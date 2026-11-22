@@ -2862,11 +2862,13 @@ namespace PaiSho
             // the same boot path that already stress longjmp invoke_* trampolines.
             // WebGL builds may omit BoardLines (runtime points draw the grid).
             // Gate meshes are required for CellSpacing calibration.
+            // Garden* meshes are the carved playable surface (Base underlay is hidden).
             bool hasGates = ContainsBoardPart(prefab, "GateHome")
                 && ContainsBoardPart(prefab, "GateForeign");
             bool hasLinesOrBoard = ContainsBoardPart(prefab, "BoardLines")
                 || ContainsBoardPart(prefab, "Board");
-            if (!hasGates || !hasLinesOrBoard)
+            bool hasGardens = ContainsBoardPartPrefix(prefab, "Garden");
+            if (!hasGates || !hasLinesOrBoard || !hasGardens)
                 return false;
 
             visual = prefab;
@@ -2881,6 +2883,20 @@ namespace PaiSho
             foreach (Transform child in root.GetComponentsInChildren<Transform>(true))
             {
                 if (child.name.Equals(partName, System.StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static bool ContainsBoardPartPrefix(GameObject root, string prefix)
+        {
+            if (root == null || string.IsNullOrEmpty(prefix))
+                return false;
+
+            foreach (Transform child in root.GetComponentsInChildren<Transform>(true))
+            {
+                if (child.name.StartsWith(prefix, System.StringComparison.OrdinalIgnoreCase))
                     return true;
             }
 

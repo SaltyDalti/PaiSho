@@ -6,14 +6,16 @@
  * max-size). This script keeps Resource paths + .meta GUIDs.
  *
  * Board.glb: texture resize only by default (mesh simplify historically broke
- * GateHome/GateForeign pitch → CellSpacing drift). Optional --strip-gardens
- * removes Garden* nodes (decor only; gates untouched).
+ * GateHome/GateForeign pitch → CellSpacing drift). Do NOT strip Garden* nodes
+ * for shipping — those meshes ARE the carved playable surface (Base is hidden
+ * at runtime). --strip-gardens remains for experiments only and refuses unless
+ * --force-strip-gardens is also passed.
  *
  * PlayerStand.glb / tiles: index unindexed TRIANGLES, weld, simplify.
  *
  * Requires Node 18+. From repo root:
  *   node tools/shrink-webgl-glbs.mjs
- *   node tools/shrink-webgl-glbs.mjs --board-stand-only --strip-gardens
+ *   node tools/shrink-webgl-glbs.mjs --board-stand-only
  */
 import { execSync } from 'child_process';
 import { readdirSync, statSync, unlinkSync } from 'fs';
@@ -23,7 +25,16 @@ import { fileURLToPath } from 'url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, '..');
 const boardStandOnly = process.argv.includes('--board-stand-only');
-const stripGardens = process.argv.includes('--strip-gardens');
+const stripGardensRequested = process.argv.includes('--strip-gardens');
+const forceStripGardens = process.argv.includes('--force-strip-gardens');
+if (stripGardensRequested && !forceStripGardens) {
+  console.error(
+    'Refusing --strip-gardens: Garden* meshes are the visible board surface. ' +
+      'Pass --force-strip-gardens only for non-shipping experiments.',
+  );
+  process.exit(2);
+}
+const stripGardens = stripGardensRequested && forceStripGardens;
 
 function ensureDeps() {
   const dir = join(root, 'tools', 'glbopt-deps');
