@@ -58,38 +58,34 @@ namespace PaiSho.Game
                 return;
 
             Transform sample = FindSampleTile(slotMarker);
-
-            Vector3 worldPosition = slotMarker.position;
-            Quaternion worldRotation = slotMarker.rotation;
-
-            if (sample != null)
-            {
-                worldPosition = sample.position;
-                worldRotation = sample.rotation;
-            }
-
-            visual.transform.SetParent(tilesRoot, false);
-            visual.transform.localScale = Vector3.one;
-            visual.transform.SetPositionAndRotation(worldPosition, worldRotation);
+            Player owner = Player.Host;
+            if (visual.TryGetComponent(out Piece piece))
+                owner = piece.Owner;
+            else if (slotMarker.TryGetComponent(out HandTraySlotMarker marker))
+                owner = marker.Owner;
 
             if (sample != null)
             {
-                WoodTheme.MatchPrefabFootprintToReference(visual, sample.gameObject);
-                visual.transform.SetPositionAndRotation(worldPosition, worldRotation);
-                WoodTheme.AlignPrefabBottomToReference(visual, sample.gameObject);
-                visual.transform.position = new Vector3(
-                    worldPosition.x,
-                    visual.transform.position.y,
-                    worldPosition.z);
-                visual.transform.rotation = worldRotation;
+                // Exact authored SampleTile world pose + lossy scale (same as capture pots).
+                BoardSideLayoutUtility.ApplySampleTilePose(visual.transform, sample, tilesRoot);
+                sample.gameObject.SetActive(true);
+                foreach (Renderer renderer in sample.GetComponentsInChildren<Renderer>(true))
+                {
+                    if (renderer != null)
+                        renderer.enabled = false;
+                }
             }
             else
             {
+                visual.transform.SetParent(tilesRoot, false);
+                visual.transform.localScale = Vector3.one;
+                visual.transform.SetPositionAndRotation(slotMarker.position, slotMarker.rotation);
                 WoodTheme.FitPrefabScaleOnly(visual, cellSpacing);
-                visual.transform.SetPositionAndRotation(worldPosition, worldRotation);
             }
 
             WoodTheme.EnsureMeshLighting(visual);
+            // Theme after pose so Host/Opponent body tint wins over any SampleTile-adjacent state.
+            PieceMaterialUtility.ApplyPieceTheme(visual, pieceType, owner);
             BoardSideLayoutUtility.EnsureRuntimeTileVisible(visual, pieceType);
         }
 

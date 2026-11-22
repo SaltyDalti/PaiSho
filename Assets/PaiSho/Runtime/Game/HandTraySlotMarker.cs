@@ -49,9 +49,30 @@ namespace PaiSho.Game
             ResolveSlotIndexFromName();
             ResolveOwnerFromHierarchy();
 
-            Transform sample = transform.Find(SampleTileName);
-            if (sample != null)
-                sample.gameObject.SetActive(!Application.isPlaying);
+            // Keep SampleTile active in play so Transform.Find / world pose stay valid for
+            // ApplyRuntimeTileToSlot (CapturePot pattern). Only hide renderers — deactivating
+            // the GO left unthemed SampleTiles visible when OnEnable order skipped Start, and
+            // broke authored seating lookups (HJ-30).
+            Transform sample = transform.Find(SampleTileName)
+                ?? GetComponentInChildren<HandTraySlotSampleTile>(true)?.transform;
+            if (sample == null)
+                return;
+
+            sample.gameObject.SetActive(true);
+            if (!Application.isPlaying)
+                return;
+
+            foreach (Renderer renderer in sample.GetComponentsInChildren<Renderer>(true))
+            {
+                if (renderer != null)
+                    renderer.enabled = false;
+            }
+
+            foreach (Collider collider in sample.GetComponentsInChildren<Collider>(true))
+            {
+                if (collider != null)
+                    collider.enabled = false;
+            }
         }
 
         public void DrawEditorGizmo(bool selected)

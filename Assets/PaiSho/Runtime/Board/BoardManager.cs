@@ -616,6 +616,15 @@ namespace PaiSho.Board
             setup?.DiscoverTrayReferences();
         }
 
+        private static void RefreshHandTraySampleVisibility()
+        {
+            foreach (HandTraySlotMarker marker in Object.FindObjectsByType<HandTraySlotMarker>(
+                         FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                marker?.RefreshVisibility();
+            }
+        }
+
         private static void DestroyDetachedHandTrays(HandTrayPose hostPose, HandTrayPose opponentPose)
         {
             // Rename before Destroy so same-frame Discover/Find won't treat pending
@@ -685,9 +694,11 @@ namespace PaiSho.Board
 #if UNITY_WEBGL && !UNITY_EDITOR
                 // Desktop GridSpacingScale (≈0.895) shrinks CoordinateToWorld vs the Resources
                 // Board.glb gate pitch; FineAlign only translates, so stands/trays drift ~cells
-                // off the carved board (HJ-26 live: southΔ=northΔ≈4.5). Match mesh 1:1 on WebGL.
+                // off the carved board (HJ-26 live: southΔ=northΔ≈4.5). Match mesh 1:1 on WebGL,
+                // but keep Desktop SpacingFineTune so intersection discs track carved lines.
                 boardLayout.SetGridSpacingScale(1f);
-                boardLayout.SetTunerOverlay(1f, Vector2.zero, boardLayout.PointHeightOffset);
+                boardLayout.SetSpacingFineTune(BoardAlignmentDefaults.SpacingFineTune);
+                boardLayout.SetGridOffset(Vector2.zero);
                 // CreateModelBoardSurface instances Board at Y=90; keep layout NS on the same
                 // world axis or FineAlign's average translation is a no-op and trays float.
                 boardLayout.SetGridYawDegrees(-90f);
@@ -746,6 +757,7 @@ namespace PaiSho.Board
                         ? GameBoardSetup.Instance
                         : Object.FindAnyObjectByType<GameBoardSetup>();
                     setup?.EnsureHandTrayRoots();
+                    RefreshHandTraySampleVisibility();
                 }
             }
             else if (boardLayout.UsePhotoBoard && BoardTextureLoader.IsAvailable())
