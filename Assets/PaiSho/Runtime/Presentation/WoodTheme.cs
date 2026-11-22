@@ -1624,7 +1624,12 @@ namespace PaiSho
             instance.transform.SetPositionAndRotation(Vector3.zero, Quaternion.Euler(0f, 90f, 0f));
             instance.transform.localScale = Vector3.one;
 
+            // On WebGL, keep the imported glTF/URP materials. EnsureMaterials →
+            // ToUrpMaterial walks every renderer and has blown Safari's invoke_iii
+            // stack on the restored board textures.
+#if !UNITY_WEBGL || UNITY_EDITOR
             PieceMaterialUtility.EnsureMaterials(instance, sourceAssetPath);
+#endif
             StripColliders(instance);
 
             float targetSpan = layout.GridSpan;
@@ -1757,7 +1762,9 @@ namespace PaiSho
 
             var instance = Object.Instantiate(prefab, parent);
             instance.name = player == Player.Host ? "PlayerStand" : "PlayerStandOpponent";
+#if !UNITY_WEBGL || UNITY_EDITOR
             PieceMaterialUtility.EnsureMaterials(instance, source);
+#endif
             EnsurePlayerStandVisible(instance);
             StripColliders(instance);
 

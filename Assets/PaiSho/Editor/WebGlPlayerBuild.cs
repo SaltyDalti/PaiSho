@@ -40,9 +40,9 @@ namespace PaiSho.EditorTools
             PlayerSettings.WebGL.decompressionFallback = true;
             PlayerSettings.WebGL.initialMemorySize = 256;
             PlayerSettings.WebGL.maximumMemorySize = 2048;
-            // None avoids invoke_* exception trampolines that Safari turns into
-            // RangeError: Maximum call stack size exceeded loops on heavy meshes.
-            PlayerSettings.WebGL.exceptionSupport = WebGLExceptionSupport.None;
+            // ExplicitlyThrown is enough for gameplay; Full With Stacktrace makes
+            // Safari's invoke_* trampolines deep enough to RangeError on boot.
+            PlayerSettings.WebGL.exceptionSupport = WebGLExceptionSupport.ExplicitlyThrownExceptionsOnly;
             PlayerSettings.WebGL.dataCaching = true;
             PlayerSettings.WebGL.nameFilesAsHashes = false;
 
