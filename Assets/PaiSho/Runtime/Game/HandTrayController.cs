@@ -455,11 +455,10 @@ namespace PaiSho.Game
             if (standTransform == null)
                 return false;
 
-            // Scene-authored trays under the stand keep their baked pose.
-            // WebGL forces PreserveSceneAuthored=false but still reattaches Slot_* trays onto
-            // Resources PlayerStand — keep that pose instead of overwriting with topCenter.
-            if (UsesSceneSlotMarkers(tray) || IsSceneAuthoredTray(tray) ||
-                TrayAlreadySeatedOnStand(tray, standTransform))
+            // Desktop preserve: keep authored local pose under the scene stand.
+            // WebGL Resources PlayerStand (and shrunk PlayerStand.glb) no longer matches the
+            // scene-authored local pose — reseat to stand topCenter, but still use Slot_*.
+            if (IsDesktopPreservedTray(tray))
                 return BindStandAnchorFromSceneTray(tray, standTransform);
 
             if (!WoodTheme.TryGetPlayerStandAnchor(standTransform.gameObject, tray.Owner, out tray.StandAnchor))
@@ -484,7 +483,8 @@ namespace PaiSho.Game
 
         private void ApplyTrayTunerOffset(TrayBinding tray)
         {
-            if (tray.Root == null || UsesSceneSlotMarkers(tray) || IsSceneAuthoredTray(tray))
+            // WebGL Slot_* trays are reseated to stand topCenter; still allow default offset.
+            if (tray.Root == null || IsDesktopPreservedTray(tray))
                 return;
 
             Vector3 offset;
@@ -1190,24 +1190,11 @@ namespace PaiSho.Game
 
         private bool UsesSceneSlotMarkers(TrayBinding tray)
         {
-            if (tray.Root == null || !GameBoardSetup.HasBakedSlotMarkers(tray.Root))
-                return false;
-
-            if (boardSetup == null)
-                boardSetup = FindAnyObjectByType<GameBoardSetup>();
-
-            // Desktop preserve path, or WebGL Resources rebuild that kept Slot_* markers.
-            if (boardSetup != null && boardSetup.PreserveSceneAuthored)
-                return true;
-
-#if UNITY_WEBGL && !UNITY_EDITOR
-            return true;
-#else
-            return false;
-#endif
+            // Prefer Slot_* whenever present — WebGL keeps markers after Resources stand rebuild.
+            return tray.Root != null && GameBoardSetup.HasBakedSlotMarkers(tray.Root);
         }
 
-        private bool IsSceneAuthoredTray(TrayBinding tray)
+        private bool IsDesktopPreservedTray(TrayBinding tray)
         {
             if (tray.Root == null)
                 return false;
@@ -1215,30 +1202,9 @@ namespace PaiSho.Game
             if (boardSetup == null)
                 boardSetup = FindAnyObjectByType<GameBoardSetup>();
 
-            if (boardSetup == null)
-                return false;
-
-            if (boardSetup.PreserveSceneAuthored)
-                return tray.Root.GetComponentInParent<GameBoardSetup>() != null;
-
-#if UNITY_WEBGL && !UNITY_EDITOR
-            // WebGL clears PreserveSceneAuthored so Resources Board.glb can seat, but the
-            // HandTray* + Slot_* hierarchy is still the scene-authored rack.
-            return GameBoardSetup.HasBakedSlotMarkers(tray.Root);
-#else
-            return false;
-#endif
-        }
-
-        private static bool TrayAlreadySeatedOnStand(TrayBinding tray, Transform standTransform)
-        {
-            if (tray.Root == null || standTransform == null)
-                return false;
-
-            if (!GameBoardSetup.HasBakedSlotMarkers(tray.Root))
-                return false;
-
-            return tray.Root.IsChildOf(standTransform);
+            return boardSetup != null
+                && boardSetup.PreserveSceneAuthored
+                && tray.Root.GetComponentInParent<GameBoardSetup>() != null;
         }
 
         private static bool BindStandAnchorFromSceneTray(TrayBinding tray, Transform standTransform)

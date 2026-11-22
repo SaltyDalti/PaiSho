@@ -616,6 +616,30 @@ namespace PaiSho.Board
             setup?.DiscoverTrayReferences();
         }
 
+        private static void DestroyDetachedHandTrays(HandTrayPose hostPose, HandTrayPose opponentPose)
+        {
+            // Rename before Destroy so same-frame Discover/Find won't treat pending
+            // destroys as live HandTray* roots (Destroy is end-of-frame).
+            if (hostPose.Valid && hostPose.Tray != null)
+            {
+                hostPose.Tray.name = "HandTrayHost_Obsolete";
+                hostPose.Tray.gameObject.SetActive(false);
+                Object.Destroy(hostPose.Tray.gameObject);
+            }
+
+            if (opponentPose.Valid && opponentPose.Tray != null)
+            {
+                opponentPose.Tray.name = "HandTrayOpponent_Obsolete";
+                opponentPose.Tray.gameObject.SetActive(false);
+                Object.Destroy(opponentPose.Tray.gameObject);
+            }
+
+            var setup = GameBoardSetup.Instance != null
+                ? GameBoardSetup.Instance
+                : Object.FindAnyObjectByType<GameBoardSetup>();
+            setup?.DiscoverTrayReferences();
+        }
+
         private static void ApplyHandTrayPose(HandTrayPose pose, Transform standRoot)
         {
             if (!pose.Valid || pose.Tray == null || standRoot == null)
@@ -704,7 +728,14 @@ namespace PaiSho.Board
                     opponentPlayerStand = WoodTheme.SpawnPlayerStand(boardLayout, boardTransform, Player.Opponent);
                     RefreshPlayerStand(Player.Host);
                     RefreshPlayerStand(Player.Opponent);
+#if UNITY_WEBGL && !UNITY_EDITOR
+                    // Scene HandTray* local poses were authored against the old stand mesh.
+                    // Shrunk Resources PlayerStand.glb no longer matches — drop them and let
+                    // EnsureHandTrayRoots bake Slot_* onto the live stand (HJ-26).
+                    DestroyDetachedHandTrays(hostTrayPose, opponentTrayPose);
+#else
                     ReattachAuthoredHandTrays(hostTrayPose, opponentTrayPose);
+#endif
                 }
             }
             else if (boardLayout.UsePhotoBoard && BoardTextureLoader.IsAvailable())
