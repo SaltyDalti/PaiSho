@@ -1418,13 +1418,18 @@ namespace PaiSho
         /// <summary>
         /// Forces textures onto the GPU and converts glTF shaders to URP Lit so the board
         /// does not flash cyan while materials finish loading.
+        /// WebGL player: skip EnsureMaterials / ToUrpMaterial — walking every Garden*
+        /// renderer through conversion re-enters Safari's invoke_iii trampoline loop.
+        /// Touch textures only; keep imported glTF/URP materials.
         /// </summary>
         public static void PreloadVisualMaterials(GameObject root, System.Func<Transform, bool> skipRenderer = null)
         {
             if (root == null)
                 return;
 
+#if !UNITY_WEBGL || UNITY_EDITOR
             PieceMaterialUtility.EnsureMaterials(root, skipRenderer: skipRenderer);
+#endif
 
             foreach (Renderer renderer in root.GetComponentsInChildren<Renderer>(true))
             {
@@ -1435,7 +1440,9 @@ namespace PaiSho
                     continue;
 
                 Material[] materials = renderer.sharedMaterials;
+#if !UNITY_WEBGL || UNITY_EDITOR
                 bool changed = false;
+#endif
                 for (int i = 0; i < materials.Length; i++)
                 {
                     Material source = materials[i];
@@ -1443,6 +1450,7 @@ namespace PaiSho
                         continue;
 
                     ForceLoadMaterialTextures(source);
+#if !UNITY_WEBGL || UNITY_EDITOR
                     Material converted = PieceMaterialUtility.ToUrpMaterial(source);
                     if (!ReferenceEquals(converted, source))
                     {
@@ -1450,10 +1458,13 @@ namespace PaiSho
                         changed = true;
                         ForceLoadMaterialTextures(converted);
                     }
+#endif
                 }
 
+#if !UNITY_WEBGL || UNITY_EDITOR
                 if (changed)
                     renderer.sharedMaterials = materials;
+#endif
             }
 
             HideSquareBoardUnderlays(root);
@@ -1624,7 +1635,12 @@ namespace PaiSho
             instance.transform.SetPositionAndRotation(Vector3.zero, Quaternion.Euler(0f, 90f, 0f));
             instance.transform.localScale = Vector3.one;
 
+            // On WebGL, keep imported glTF/URP materials. EnsureMaterials → ToUrpMaterial
+            // walks every Garden* renderer and has blown Safari's invoke_iii stack on the
+            // restored board (~72MB data). ApplyBoardModelMaterialTweaks still runs below.
+#if !UNITY_WEBGL || UNITY_EDITOR
             PieceMaterialUtility.EnsureMaterials(instance, sourceAssetPath);
+#endif
             StripColliders(instance);
 
             float targetSpan = layout.GridSpan;
@@ -1769,7 +1785,9 @@ namespace PaiSho
                 if (string.IsNullOrEmpty(path))
                     continue;
 
+#if !UNITY_WEBGL || UNITY_EDITOR
                 PieceMaterialUtility.EnsureMaterials(root, path, skipRenderer: skipRenderer);
+#endif
                 if (HasAssignedMaterials(root, skipRenderer))
                     return;
             }
@@ -1811,7 +1829,9 @@ namespace PaiSho
 
             var instance = Object.Instantiate(prefab, parent);
             instance.name = player == Player.Host ? "PlayerStand" : "PlayerStandOpponent";
+#if !UNITY_WEBGL || UNITY_EDITOR
             PieceMaterialUtility.EnsureMaterials(instance, source);
+#endif
             EnsurePlayerStandVisible(instance);
             StripColliders(instance);
 
