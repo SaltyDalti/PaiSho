@@ -79,6 +79,12 @@ namespace PaiSho.EditorTools
 
             AssetDatabase.SaveAssets();
             LogOutputSizes(OutputDirectory);
+            if (!VerifySafariBuildArtifacts(OutputDirectory))
+            {
+                EditorApplication.Exit(5);
+                return;
+            }
+
             Debug.Log($"WebGL build succeeded: {summary.totalSize} bytes at {OutputDirectory}");
             EditorApplication.Exit(0);
         }
@@ -101,6 +107,87 @@ namespace PaiSho.EditorTools
             }
 
             Debug.Log($"WebGL Build/ folder total: {total} bytes");
+        }
+
+        /// <summary>
+        /// Settings can be logged as applied while the linked framework still looks like the
+        /// pre-table dynCall player (live HJ-14 mismatch: framework ~88 KB + dynCall_iii, not
+        /// ~83 KB + getWasmTableEntry). Fail the batch build if table mode did not land.
+        /// Does NOT require absence of invoke_* (those remain as longjmp under None).
+        /// </summary>
+        static bool VerifySafariBuildArtifacts(string outputDirectory)
+        {
+            string buildDir = Path.Combine(outputDirectory, "Build");
+            string frameworkPath = FindFrameworkPath(buildDir);
+            if (frameworkPath == null)
+            {
+                Debug.LogError("WebGL Safari verify: missing framework.js(.unityweb) under Build/.");
+                return false;
+            }
+
+            string text = ReadPossiblyGzipText(frameworkPath);
+            if (string.IsNullOrEmpty(text))
+            {
+                Debug.LogError($"WebGL Safari verify: could not read {frameworkPath}");
+                return false;
+            }
+
+            bool wantTable = PlayerSettings.WebGL.webAssemblyTable;
+            bool hasTableEntry = text.Contains("getWasmTableEntry");
+            bool hasDynCallIii = text.Contains("dynCall_iii");
+            Debug.Log(
+                $"[WebGL] artifact check: framework={Path.GetFileName(frameworkPath)} " +
+                $"bytes={new FileInfo(frameworkPath).Length} webAssemblyTable={wantTable} " +
+                $"getWasmTableEntry={hasTableEntry} dynCall_iii={hasDynCallIii}");
+
+            if (wantTable && !hasTableEntry)
+            {
+                Debug.LogError(
+                    "WebGL Safari verify FAILED: webAssemblyTable is true but framework.js has no " +
+                    "getWasmTableEntry (still looks like dynCall interop). Do not upload — linker " +
+                    "settings likely did not apply. Check Bee/emcc logs for -sWASM_TABLE / table flags.");
+                return false;
+            }
+
+            string args = PlayerSettings.WebGL.emscriptenArgs ?? string.Empty;
+            if (!args.Contains("STACK_SIZE"))
+            {
+                Debug.LogError(
+                    "WebGL Safari verify FAILED: emscriptenArgs missing STACK_SIZE after build.");
+                return false;
+            }
+
+            return true;
+        }
+
+        static string FindFrameworkPath(string buildDir)
+        {
+            if (!Directory.Exists(buildDir))
+                return null;
+
+            foreach (string path in Directory.GetFiles(buildDir))
+            {
+                string name = Path.GetFileName(path);
+                if (name.IndexOf("framework", System.StringComparison.OrdinalIgnoreCase) >= 0 &&
+                    (name.EndsWith(".js") || name.EndsWith(".js.unityweb") || name.EndsWith(".js.gz")))
+                    return path;
+            }
+
+            return null;
+        }
+
+        static string ReadPossiblyGzipText(string path)
+        {
+            byte[] bytes = File.ReadAllBytes(path);
+            if (bytes.Length >= 2 && bytes[0] == 0x1f && bytes[1] == 0x8b)
+            {
+                using (var input = new MemoryStream(bytes))
+                using (var gzip = new System.IO.Compression.GZipStream(input, System.IO.Compression.CompressionMode.Decompress))
+                using (var reader = new StreamReader(gzip, Encoding.UTF8))
+                    return reader.ReadToEnd();
+            }
+
+            return Encoding.UTF8.GetString(bytes);
         }
     }
 }

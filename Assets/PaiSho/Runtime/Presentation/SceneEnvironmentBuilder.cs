@@ -22,7 +22,12 @@ namespace PaiSho
             SetupPostProcessing(environment.transform);
             SetupLighting(environment.transform, boardSpan);
             BuildTeaRoom(environment.transform, boardRoot, roomSize, boardSpan);
+            // Realtime ReflectionProbe.RenderProbe() has been a Safari WebGL stack suspect
+            // (JS↔wasm longjmp invoke_* cycle after boot). Keep the tea room; skip the probe
+            // on WebGL until Safari RangeError is cleared.
+#if !UNITY_WEBGL || UNITY_EDITOR
             SetupReflectionProbe(environment.transform, boardSpan);
+#endif
             EnableCameraEffects();
         }
 
