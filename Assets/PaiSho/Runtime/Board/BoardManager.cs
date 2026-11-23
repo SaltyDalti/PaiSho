@@ -646,6 +646,24 @@ namespace PaiSho.Board
                 Destroy(orphanOpponent.gameObject);
         }
 
+        /// <summary>
+        /// WebGL: reuse GamePlay PlayerStand PrefabInstances (tray authoring source). Spawn
+        /// Resources Board/PlayerStand.glb only when the scene stand is missing.
+        /// </summary>
+        private Transform BindOrSpawnPlayerStand(Transform existing, Transform boardParent, Player player)
+        {
+            if (existing != null)
+            {
+                existing.gameObject.SetActive(true);
+                if (boardParent != null && existing.parent != boardParent)
+                    existing.SetParent(boardParent, true);
+                WoodTheme.EnsurePlayerStandVisible(existing.gameObject);
+                return existing;
+            }
+
+            return WoodTheme.SpawnPlayerStand(boardLayout, boardParent, player);
+        }
+
         private void ReattachAuthoredHandTrays(HandTrayPose hostPose, HandTrayPose opponentPose)
         {
             ApplyHandTrayPose(hostPose, hostPlayerStand);
@@ -760,11 +778,17 @@ namespace PaiSho.Board
             Transform boardTransform = boardLayout != null ? boardLayout.transform : transform;
 
             // WebGL forces this path with usePrebuiltLayout=false, so TryBindPrebuiltVisuals
-            // never claims scene PlayerStand PrefabInstances. Without clearing them, SpawnPlayerStand
-            // doubles the rack (legacy silhouette between the real Slot_* tray and the board).
+            // never claims scene PlayerStand PrefabInstances. Keep those stands on WebGL —
+            // HandTray*/Slot_*/SampleTile were authored against that hierarchy (HJ-41). Desktop
+            // non-preserve still clears and respawns Resources stands.
             DetachAuthoredHandTrays(
                 boardTransform, out HandTrayPose hostTrayPose, out HandTrayPose opponentTrayPose);
+#if UNITY_WEBGL && !UNITY_EDITOR
+            hostPlayerStand = FindSceneObjectByName("PlayerStand");
+            opponentPlayerStand = FindSceneObjectByName("PlayerStandOpponent");
+#else
             DestroyAllScenePlayerStands();
+#endif
 
             if (boardLayout.UseModelBoard && BoardVisualLoader.TryLoadModel(out GameObject boardModel, out string boardSource))
             {
@@ -824,11 +848,20 @@ namespace PaiSho.Board
 
                 if (boardLayout.UseModelBoard && PlayerStandLoader.IsAvailable())
                 {
+#if UNITY_WEBGL && !UNITY_EDITOR
+                    // Prefer GamePlay PrefabInstance stands (tray authoring source). Resources
+                    // PlayerStand.glb only if the scene stand is missing.
+                    hostPlayerStand = BindOrSpawnPlayerStand(
+                        hostPlayerStand, boardTransform, Player.Host);
+                    opponentPlayerStand = BindOrSpawnPlayerStand(
+                        opponentPlayerStand, boardTransform, Player.Opponent);
+#else
                     hostPlayerStand = WoodTheme.SpawnPlayerStand(boardLayout, boardTransform, Player.Host);
                     opponentPlayerStand = WoodTheme.SpawnPlayerStand(boardLayout, boardTransform, Player.Opponent);
+#endif
                     RefreshPlayerStand(Player.Host);
                     RefreshPlayerStand(Player.Opponent);
-                    // Keep authored HandTray* + Slot_* + SampleTile under the new stand root.
+                    // Keep authored HandTray* + Slot_* + SampleTile under the stand root.
                     // Uniform stand scale preserves tray-to-mesh locals (HJ-29). Destroying trays
                     // and AABB-rebaking was what threw WebGL seats off the crescent (#21/#22).
                     ReattachAuthoredHandTrays(hostTrayPose, opponentTrayPose);

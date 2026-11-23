@@ -2542,15 +2542,41 @@ namespace PaiSho
                 AssignRendererMaterial(renderer, material);
             }
 
-            // GardenLight/GardenDark mesh names are reversed vs gameplay garden coordinates.
+            // GardenLight/GardenDark mesh names are reversed vs gameplay white/red gardens.
+            // Assign by luminance (idempotent) — a second call must not toggle back (HJ-41:
+            // CreateModelBoardSurface + EnsureBoardModelMaterialTweaks double-swap flipped 0.1.18).
             if (lightGardenMaterial != null && darkGardenMaterial != null)
             {
+                Material lighter;
+                Material darker;
+                if (GardenMaterialLuminance(lightGardenMaterial) >= GardenMaterialLuminance(darkGardenMaterial))
+                {
+                    lighter = lightGardenMaterial;
+                    darker = darkGardenMaterial;
+                }
+                else
+                {
+                    lighter = darkGardenMaterial;
+                    darker = lightGardenMaterial;
+                }
+
                 foreach (Renderer renderer in lightRenderers)
-                    AssignRendererMaterial(renderer, CreateMaterialInstance(darkGardenMaterial));
+                    AssignRendererMaterial(renderer, CreateMaterialInstance(darker));
 
                 foreach (Renderer renderer in darkRenderers)
-                    AssignRendererMaterial(renderer, CreateMaterialInstance(lightGardenMaterial));
+                    AssignRendererMaterial(renderer, CreateMaterialInstance(lighter));
             }
+        }
+
+        private static float GardenMaterialLuminance(Material material)
+        {
+            if (material == null)
+                return 0f;
+
+            Color color = material.HasProperty("_BaseColor")
+                ? material.GetColor("_BaseColor")
+                : material.color;
+            return color.r * 0.2126f + color.g * 0.7152f + color.b * 0.0722f;
         }
 
         private static Material CreateMaterialInstance(Material source)
