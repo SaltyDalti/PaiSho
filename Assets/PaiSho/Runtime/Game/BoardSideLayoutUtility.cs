@@ -42,6 +42,10 @@ namespace PaiSho.Game
             if (visual == null || sample == null || tilesRoot == null)
                 return;
 
+            // Parent first (world-preserve). Without this, localScale is interpreted under the
+            // scene root and SampleTile lossy/tilesRoot math yields ~2× authored stand-0.5 size
+            // (HJ-39: tray tiles too big vs board / rack).
+            visual.SetParent(tilesRoot, true);
             Vector3 parentLossy = tilesRoot.lossyScale;
             Vector3 sampleLossy = sample.lossyScale;
             visual.SetPositionAndRotation(sample.position, sample.rotation);

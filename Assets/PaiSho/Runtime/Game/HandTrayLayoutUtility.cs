@@ -70,13 +70,16 @@ namespace PaiSho.Game
                 slotIndex = marker.SlotIndex;
             }
 
-            // Faithful C# seating: copy SampleTile world pose + lossy scale. WebGL keeps empty
-            // pose anchors (meshes stripped at bake / boot) so Safari never skins fourteen tiles
-            // while Chrome still gets the authored offsets — not Slot_* + FitPrefabScaleOnly.
-            // cellSpacing is unused here on purpose: SampleTile lossyScale is the authored size.
-            _ = cellSpacing;
+            // Seat at authored SampleTile world pose (Host/Opponent offsets), parented under the
+            // tray tiles root. Then FitPrefabScaleOnly(cellSpacing) so tray tiles match board
+            // tile diameter — SampleTile localScale 0.467 was tuned under stand scale 0.5;
+            // WebGL remeshes stands to CellSpacing×6×1.5, so copying lossyScale alone oversizes
+            // tiles on the rack (HJ-39). Keep SampleTile position/rotation; replace scale.
             Transform sample = EnsureSamplePoseAnchor(slotMarker, owner, slotIndex);
+            ApplyAuthoredSampleLocals(sample, owner, slotIndex);
             BoardSideLayoutUtility.ApplySampleTilePose(visual.transform, sample, tilesRoot);
+            if (cellSpacing > 0.0001f)
+                WoodTheme.FitPrefabScaleOnly(visual, cellSpacing);
 
 #if !UNITY_WEBGL || UNITY_EDITOR
             sample.gameObject.SetActive(true);

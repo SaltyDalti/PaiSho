@@ -31,8 +31,9 @@ namespace PaiSho.Game
         public static readonly Vector3 AuthoredTrayLocalScale = Vector3.one;
 
         /// <summary>
-        /// SampleTile localScale under Slot_* in GamePlay.unity / GameBoardSetup.prefab.
-        /// Desktop seating copies this via <c>ApplySampleTilePose</c> (lossy under stand 0.5).
+        /// SampleTile localScale under Slot_* in GamePlay.unity / GameBoardSetup.prefab
+        /// (lossy under authored stand scale 0.5). Runtime copies SampleTile position/rotation,
+        /// then <c>FitPrefabScaleOnly(CellSpacing)</c> so tray tiles match board diameter (HJ-39).
         /// </summary>
         public static readonly Vector3 AuthoredSampleTileLocalScale =
             new Vector3(0.4672535f, 0.4672535f, 0.4672535f);
