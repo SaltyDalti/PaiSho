@@ -78,14 +78,18 @@ namespace PaiSho.Game
             ReserveManager.Instance.InitializeDefaultReserves();
 
 #if UNITY_WEBGL && !UNITY_EDITOR
-            // HJ-25: defer Board.glb Instantiate + garden GPU upload until New Game.
-            // Title dim already covers the scene; Instantiating the carved board at boot
-            // co-occurs with Safari invoke_iii even after EnsureMaterials skip.
+            // HJ-25/HJ-32: defer Board.glb + stands + piece GLB loads until New Game so
+            // Safari callMain is not Instantiating gardens/tiles. Stagger frames between
+            // heavy steps to keep invoke_* trampolines from stacking.
             yield return TitleMenu.WaitUntilMatchRequested();
+            yield return null;
+            if (BoardManager.Instance != null)
+                yield return BoardManager.Instance.EnsurePiecePrefabsLoadedStaggered();
+            yield return null;
             SetupBoard();
+            yield return null;
             PotVisualManager.Instance?.InitializeAnchors();
-            // Seat trays/tiles before framing so host rack bounds enter the camera fit
-            // (HJ-26: framing-before-Refresh left spring tiles under the dock).
+            yield return null;
             HandTrayController.Instance?.Refresh();
             FrameCameraOnBoard();
             GameManager.Instance.RefreshLiveScores();

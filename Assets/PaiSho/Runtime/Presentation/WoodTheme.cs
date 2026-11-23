@@ -1931,6 +1931,9 @@ namespace PaiSho
             {
                 Bounds localBounds = ComputeRendererLocalBounds(renderer);
                 float longSpan = Mathf.Max(localBounds.size.x, localBounds.size.z);
+                // Uniform remesh keeps authored HandTray*/Slot_* locals under the stand root
+                // (HJ-29). Do not force scene PrefabInstance scale 0.5 — gate CellSpacing drives
+                // stand size so the crescent tracks the board.
                 float targetSpan = layout.CellSpacing * 6f * scaleMultiplier;
                 if (longSpan > 0.001f)
                     stand.localScale = Vector3.one * (targetSpan / longSpan);

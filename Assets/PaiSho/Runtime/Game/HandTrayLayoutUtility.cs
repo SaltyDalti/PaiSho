@@ -18,9 +18,7 @@ namespace PaiSho.Game
             if (standRoot == null || layout == null)
                 return null;
 
-            // Authored HandTray* lives under the stand root (GamePlay / GameBoardSetup prefab),
-            // not under the mesh AABB center. Parenting to the mesh + topCenter was the WebGL
-            // heuristic that threw Slot_* seats off the crescent (HJ-29).
+            // Authored HandTray* lives under the stand root (GamePlay / GameBoardSetup prefab).
             var trayObject = new GameObject(trayName);
             Transform trayRoot = trayObject.transform;
             trayRoot.SetParent(standRoot, false);
@@ -57,42 +55,64 @@ namespace PaiSho.Game
             if (visual == null || slotMarker == null || tilesRoot == null)
                 return;
 
-            Transform sample = FindSampleTile(slotMarker);
             Player owner = Player.Host;
+            int slotIndex = 0;
             if (visual.TryGetComponent(out Piece piece))
                 owner = piece.Owner;
-            else if (slotMarker.TryGetComponent(out HandTraySlotMarker marker))
+            if (slotMarker.TryGetComponent(out HandTraySlotMarker marker))
+            {
                 owner = marker.Owner;
+                slotIndex = marker.SlotIndex;
+            }
 
+#if UNITY_WEBGL && !UNITY_EDITOR
+            // WebGL destroys SampleTiles at boot (Safari). Seat from authored Slot_* locals +
+            // HandTrayAlignmentDefaults euler, scaled to CellSpacing like board tiles — not
+            // inactive SampleTile lossyScale (authored under stand scale 0.5) (HJ-32).
+            SeatFromAuthoredSlot(visual, slotMarker, tilesRoot, cellSpacing, owner, slotIndex);
+#else
+            Transform sample = FindSampleTile(slotMarker);
             if (sample != null)
             {
-                // Exact authored SampleTile world pose + lossy scale (same as capture pots).
-                // Do not re-activate SampleTiles on WebGL — that reintroduced Safari callMain
-                // OOB after 0.1.14 kept fourteen tile prefabs alive (HJ-31).
                 BoardSideLayoutUtility.ApplySampleTilePose(visual.transform, sample, tilesRoot);
-#if !UNITY_WEBGL || UNITY_EDITOR
                 sample.gameObject.SetActive(true);
                 foreach (Renderer renderer in sample.GetComponentsInChildren<Renderer>(true))
                 {
                     if (renderer != null)
                         renderer.enabled = false;
                 }
-#else
-                sample.gameObject.SetActive(false);
-#endif
             }
             else
             {
-                visual.transform.SetParent(tilesRoot, false);
-                visual.transform.localScale = Vector3.one;
-                visual.transform.SetPositionAndRotation(slotMarker.position, slotMarker.rotation);
-                WoodTheme.FitPrefabScaleOnly(visual, cellSpacing);
+                SeatFromAuthoredSlot(visual, slotMarker, tilesRoot, cellSpacing, owner, slotIndex);
             }
+#endif
 
             WoodTheme.EnsureMeshLighting(visual);
-            // Theme after pose so Host/Opponent body tint wins over any SampleTile-adjacent state.
             PieceMaterialUtility.ApplyPieceTheme(visual, pieceType, owner);
             BoardSideLayoutUtility.EnsureRuntimeTileVisible(visual, pieceType);
+        }
+
+        private static void SeatFromAuthoredSlot(
+            GameObject visual,
+            Transform slotMarker,
+            Transform tilesRoot,
+            float cellSpacing,
+            Player owner,
+            int slotIndex)
+        {
+            visual.transform.SetParent(tilesRoot, false);
+            visual.transform.localScale = Vector3.one;
+
+            // Scene Slot_* often have identity local euler; tilt lives in SampleTile / defaults.
+            Quaternion authoredTilt = Quaternion.Euler(HandTrayAlignmentDefaults.GetSlotEuler(slotIndex, owner));
+            bool slotHasAuthoredTilt = slotMarker.localEulerAngles.sqrMagnitude > 0.01f;
+            Quaternion worldRotation = slotHasAuthoredTilt
+                ? slotMarker.rotation
+                : slotMarker.rotation * authoredTilt;
+
+            visual.transform.SetPositionAndRotation(slotMarker.position, worldRotation);
+            WoodTheme.FitPrefabScaleOnly(visual, cellSpacing);
         }
 
         private static Transform FindSampleTile(Transform slotMarker)

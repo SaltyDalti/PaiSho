@@ -13,6 +13,7 @@ namespace PaiSho.Game
     /// Hand-tray slot anchor. Move/rotate this Slot_N transform in the scene.
     /// A baked SampleTile child is a literal game piece prefab for perfect alignment.
     /// </summary>
+    [DefaultExecutionOrder(-1000)]
     [DisallowMultipleComponent]
     public class HandTraySlotMarker : MonoBehaviour
     {
@@ -26,6 +27,16 @@ namespace PaiSho.Game
         public int SlotIndex => slotIndex;
         public Player Owner => owner;
         public PieceType SamplePieceType => samplePieceType;
+
+#if UNITY_WEBGL && !UNITY_EDITOR
+        private void Awake()
+        {
+            // Destroy authored SampleTile meshes before later Awake/Start traffic on Safari.
+            Transform sample = transform.Find(SampleTileName);
+            if (sample != null)
+                Destroy(sample.gameObject);
+        }
+#endif
 
         private void OnEnable() => RefreshVisibility();
 
@@ -55,16 +66,16 @@ namespace PaiSho.Game
                 return;
 
 #if UNITY_WEBGL && !UNITY_EDITOR
-            // 0.1.14 kept all authored SampleTile prefabs active (renderers off) through
-            // callMain and Safari hit getWasmTableEntry OOB. Pose is still readable from
-            // inactive transforms via GetComponentInChildren(true) when seating (HJ-31).
+            // Destroy rather than walk GetComponentsInChildren — 0.1.15 SetActive(false) still
+            // left meshes in the hierarchy through callMain (HJ-32). Seating uses Slot_* +
+            // HandTrayAlignmentDefaults (no SampleTile activate).
             if (Application.isPlaying)
             {
-                sample.gameObject.SetActive(false);
+                Object.Destroy(sample.gameObject);
                 return;
             }
 
-            sample.gameObject.SetActive(true);
+            sample.gameObject.SetActive(false);
 #else
             // Desktop / Editor: keep SampleTile active but non-rendered so gizmos / adopt
             // tools can read world bounds without Find failing on inactive children.

@@ -46,7 +46,54 @@ namespace PaiSho.Board
             }
 
             Instance = this;
+#if UNITY_WEBGL && !UNITY_EDITOR
+            // Do not Resources.Load all 12 Tile_*.glb during callMain — that boot traffic
+            // plus scene SampleTiles blew Safari getWasmTableEntry (HJ-32). Load on Initialize.
+#else
             BuildPrefabLookup();
+#endif
+        }
+
+        /// <summary>Ensure piece GLBs are loaded (deferred on WebGL until board setup).</summary>
+        public void EnsurePiecePrefabsLoaded()
+        {
+            if (prefabLookup.Count == 0)
+                BuildPrefabLookup();
+        }
+
+        /// <summary>
+        /// Load piece GLBs a few at a time across frames (Safari New Game path). Prefer this
+        /// over a single <see cref="EnsurePiecePrefabsLoaded"/> that hits all 12 at once.
+        /// </summary>
+        public System.Collections.IEnumerator EnsurePiecePrefabsLoadedStaggered(int batchSize = 3)
+        {
+            if (prefabLookup.Count > 0)
+                yield break;
+
+#if UNITY_WEBGL && !UNITY_EDITOR
+            EnsureRuntimePiecePrefab(PieceType.Jasmine, "Assets/Resources/PieceVisuals/Tile_Jasmine.glb");
+            EnsureRuntimePiecePrefab(PieceType.Rose, "Assets/Resources/PieceVisuals/Tile_Rose.glb");
+            EnsureRuntimePiecePrefab(PieceType.Lily, "Assets/Resources/PieceVisuals/Tile_Lily.glb");
+            if (batchSize > 0)
+                yield return null;
+            EnsureRuntimePiecePrefab(PieceType.Jade, "Assets/Resources/PieceVisuals/Tile_Jade.glb");
+            EnsureRuntimePiecePrefab(PieceType.Chrysanthemum, "Assets/Resources/PieceVisuals/Tile_Chrys.glb");
+            EnsureRuntimePiecePrefab(PieceType.Rhododendron, "Assets/Resources/PieceVisuals/Tile_Rhod.glb");
+            if (batchSize > 0)
+                yield return null;
+            EnsureRuntimePiecePrefab(PieceType.Boat, "Assets/Resources/PieceVisuals/Tile_Boat.glb");
+            EnsureRuntimePiecePrefab(PieceType.Rock, "Assets/Resources/PieceVisuals/Tile_Rock.glb");
+            EnsureRuntimePiecePrefab(PieceType.Knotweed, "Assets/Resources/PieceVisuals/Tile_Knot.glb");
+            if (batchSize > 0)
+                yield return null;
+            EnsureRuntimePiecePrefab(PieceType.Wheel, "Assets/Resources/PieceVisuals/Tile_Wheel.glb");
+            EnsureRuntimePiecePrefab(PieceType.Lotus, "Assets/Resources/PieceVisuals/Tile_Lotus.glb");
+            EnsureRuntimePiecePrefab(PieceType.Orchid, "Assets/Resources/PieceVisuals/Tile_Orchid.glb");
+            DebugLogger.Log($"Piece prefabs loaded (staggered): {prefabLookup.Count}");
+#else
+            BuildPrefabLookup();
+            yield break;
+#endif
         }
 
         public void SetUsePrebuiltLayout(bool enabled)
@@ -591,18 +638,12 @@ namespace PaiSho.Board
             }
 
             // Orphans left when TryBindPrebuiltVisuals was skipped (WebGL Resources path).
-            var all = Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-            for (int i = 0; i < all.Length; i++)
-            {
-                Transform candidate = all[i];
-                if (candidate == null)
-                    continue;
-
-                if (candidate.name != "PlayerStand" && candidate.name != "PlayerStandOpponent")
-                    continue;
-
-                Destroy(candidate.gameObject);
-            }
+            Transform orphanHost = FindSceneObjectByName("PlayerStand");
+            if (orphanHost != null)
+                Destroy(orphanHost.gameObject);
+            Transform orphanOpponent = FindSceneObjectByName("PlayerStandOpponent");
+            if (orphanOpponent != null)
+                Destroy(orphanOpponent.gameObject);
         }
 
         private void ReattachAuthoredHandTrays(HandTrayPose hostPose, HandTrayPose opponentPose)
@@ -618,9 +659,11 @@ namespace PaiSho.Board
 
         private static void RefreshHandTraySampleVisibility()
         {
-            // Prefer tray-local markers over a full-scene FindObjects sweep on WebGL — walking
-            // every HandTraySlotMarker + SampleTile mesh tree at New Game coincided with
-            // Safari trampoline pressure after 0.1.14 (HJ-31).
+#if UNITY_WEBGL && !UNITY_EDITOR
+            // SampleTiles are destroyed at boot; Slot_* seating does not need a refresh walk.
+            return;
+#else
+            // Prefer tray-local markers over a full-scene FindObjects sweep.
             var setup = GameBoardSetup.Instance != null
                 ? GameBoardSetup.Instance
                 : Object.FindAnyObjectByType<GameBoardSetup>();
@@ -636,6 +679,7 @@ namespace PaiSho.Board
             {
                 marker?.RefreshVisibility();
             }
+#endif
         }
 
         private static void RefreshTraySampleVisibility(Transform trayRoot)
@@ -679,9 +723,21 @@ namespace PaiSho.Board
 
             // Scene trays are authored under the PlayerStand root (not a nested mesh child).
             pose.Tray.SetParent(standRoot, false);
+#if UNITY_WEBGL && !UNITY_EDITOR
+            // Captured locals can drift when Detach used world-preserve under a transient parent.
+            // Always re-seat at HandTrayAlignmentDefaults authored stand-root pose (HJ-32).
+            Player owner = pose.Tray.name == GameBoardSetup.OpponentTrayName
+                ? Player.Opponent
+                : Player.Host;
+            pose.Tray.localPosition = HandTrayAlignmentDefaults.GetAuthoredTrayLocalPosition(owner);
+            pose.Tray.localRotation = Quaternion.Euler(
+                HandTrayAlignmentDefaults.GetAuthoredTrayLocalEuler(owner));
+            pose.Tray.localScale = HandTrayAlignmentDefaults.AuthoredTrayLocalScale;
+#else
             pose.Tray.localPosition = pose.LocalPosition;
             pose.Tray.localRotation = pose.LocalRotation;
             pose.Tray.localScale = pose.LocalScale;
+#endif
         }
 
         private void BuildBoardVisuals()

@@ -158,9 +158,12 @@ namespace PaiSho.Game
             if (HasHandTrayRoots())
                 return true;
 
+#if UNITY_WEBGL && !UNITY_EDITOR
+            // Do not Instantiate prefab HandTray* with fourteen SampleTiles on Safari — bake
+            // Slot_* markers only at authored locals (HJ-32). Desktop still restores SampleTiles.
+#else
             // Prefab HandTray* carries the authored Slot_* + SampleTile graph (same locals as
-            // GamePlay). Restore onto the live stand root whenever trays are missing — including
-            // WebGL after Resources PlayerStand spawn (HJ-29).
+            // GamePlay). Restore onto the live stand root whenever trays are missing (HJ-29).
             GameBoardSetup template = templateOverride ?? ResolvePrefabTemplate();
             if (template != null && TryRestoreHandTrayRootsFromTemplate(template))
             {
@@ -170,6 +173,7 @@ namespace PaiSho.Game
             DiscoverTrayReferences();
             if (HasHandTrayRoots())
                 return true;
+#endif
 
             if (TryBakeMissingHandTrays())
             {

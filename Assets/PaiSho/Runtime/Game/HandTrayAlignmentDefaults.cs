@@ -14,6 +14,11 @@ namespace PaiSho.Game
         public const float StandLiftOffset = -0.008748340420424939f;
         public const float StandYawOffset = 0f;
         public const float StandScaleMultiplier = 1.5f;
+        /// <summary>
+        /// GamePlay PrefabInstance override on PlayerStand (uniform). Authored HandTray* /
+        /// Slot_* locals were tuned in this stand-root space.
+        /// </summary>
+        public const float AuthoredStandLocalScale = 0.5f;
         public static readonly Vector3 StandExtraOffset = Vector3.zero;
 
         /// <summary>
