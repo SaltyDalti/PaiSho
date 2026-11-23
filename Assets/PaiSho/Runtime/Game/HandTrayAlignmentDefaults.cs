@@ -30,6 +30,13 @@ namespace PaiSho.Game
         public static readonly Vector3 AuthoredTrayLocalEuler = Vector3.zero;
         public static readonly Vector3 AuthoredTrayLocalScale = Vector3.one;
 
+        /// <summary>
+        /// SampleTile localScale under Slot_* in GamePlay.unity / GameBoardSetup.prefab.
+        /// Desktop seating copies this via <c>ApplySampleTilePose</c> (lossy under stand 0.5).
+        /// </summary>
+        public static readonly Vector3 AuthoredSampleTileLocalScale =
+            new Vector3(0.4672535f, 0.4672535f, 0.4672535f);
+
         public static readonly Vector3 TrayLocalOffset =
             new Vector3(0.19078999757766725f, 0.015789499506354333f, 0f);
         public static readonly Vector3 TrayLocalEuler = Vector3.zero;
@@ -87,6 +94,53 @@ namespace PaiSho.Game
             new Vector3(-55f, 0f, 3.5526299476623537f),
             new Vector3(-55f, 1.9014099836349488f, 5.921050071716309f),
             new Vector3(-55f, 0f, 12.434200286865235f),
+        };
+
+        // GamePlay.unity SampleTile locals under HandTrayHost Slot_* (not Slot euler — mesh tilt
+        // lives in the piece prefab; SampleTile transform euler is near-zero on Host).
+        private static readonly Vector3[] HostSampleTileLocalPositions =
+        {
+            new Vector3(0f, 0.052f, 0.043f),
+            new Vector3(0f, 0.083f, 0.032f),
+            new Vector3(0f, 0.096f, 0.027f),
+            new Vector3(0f, 0.103f, 0.016f),
+            new Vector3(0f, 0.109f, 0.016f),
+            new Vector3(0f, 0.109f, -0.004f),
+            new Vector3(0f, 0.083f, 0.019f),
+        };
+
+        private static readonly Vector3[] HostSampleTileLocalEuler =
+        {
+            new Vector3(0f, 0f, 2.27f),
+            new Vector3(0f, 0f, 1.206f),
+            Vector3.zero,
+            new Vector3(0f, 0f, 0.194f),
+            Vector3.zero,
+            new Vector3(0f, 0f, 1.613f),
+            Vector3.zero,
+        };
+
+        // GamePlay.unity SampleTile locals under HandTrayOpponent Slot_*.
+        private static readonly Vector3[] OpponentSampleTileLocalPositions =
+        {
+            new Vector3(0f, -0.346f, 0.015f),
+            new Vector3(0f, -0.345f, 0.016f),
+            new Vector3(0f, -0.357f, 0.02f),
+            new Vector3(0f, -0.357f, 0.02f),
+            new Vector3(0f, -0.376f, 0.036f),
+            new Vector3(0f, -0.398f, 0.031f),
+            new Vector3(0.006f, -0.411f, 0.031f),
+        };
+
+        private static readonly Vector3[] OpponentSampleTileLocalEuler =
+        {
+            new Vector3(0f, 0f, 1.044f),
+            Vector3.zero,
+            new Vector3(0f, 0f, -1.073f),
+            Vector3.zero,
+            new Vector3(0f, 0f, -0.69f),
+            Vector3.zero,
+            new Vector3(0.097f, 10.546f, -0.519f),
         };
 
         public static void ApplyHostTo(HandTrayTunerSettings settings)
@@ -167,6 +221,26 @@ namespace PaiSho.Game
             return player == Player.Host
                 ? SlotLocalEuler[slotIndex]
                 : OpponentSlotLocalEuler[slotIndex];
+        }
+
+        public static Vector3 GetSampleTileLocalPosition(int slotIndex, Player player)
+        {
+            if (slotIndex < 0 || slotIndex >= MaxSlots)
+                return Vector3.zero;
+
+            return player == Player.Host
+                ? HostSampleTileLocalPositions[slotIndex]
+                : OpponentSampleTileLocalPositions[slotIndex];
+        }
+
+        public static Vector3 GetSampleTileLocalEuler(int slotIndex, Player player)
+        {
+            if (slotIndex < 0 || slotIndex >= MaxSlots)
+                return Vector3.zero;
+
+            return player == Player.Host
+                ? HostSampleTileLocalEuler[slotIndex]
+                : OpponentSampleTileLocalEuler[slotIndex];
         }
     }
 }

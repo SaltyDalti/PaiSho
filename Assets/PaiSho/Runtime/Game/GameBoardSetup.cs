@@ -159,8 +159,8 @@ namespace PaiSho.Game
                 return true;
 
 #if UNITY_WEBGL && !UNITY_EDITOR
-            // Do not Instantiate prefab HandTray* with fourteen SampleTiles on Safari — bake
-            // Slot_* markers only at authored locals (HJ-32). Desktop still restores SampleTiles.
+            // Do not Instantiate prefab HandTray* (would pull SampleTile meshes). Bake Slot_*
+            // + empty SampleTile pose anchors at authored locals instead (HJ-37).
 #else
             // Prefab HandTray* carries the authored Slot_* + SampleTile graph (same locals as
             // GamePlay). Restore onto the live stand root whenever trays are missing (HJ-29).

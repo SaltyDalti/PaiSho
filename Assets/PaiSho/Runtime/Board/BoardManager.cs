@@ -659,11 +659,8 @@ namespace PaiSho.Board
 
         private static void RefreshHandTraySampleVisibility()
         {
-#if UNITY_WEBGL && !UNITY_EDITOR
-            // SampleTiles are destroyed at boot; Slot_* seating does not need a refresh walk.
-            return;
-#else
             // Prefer tray-local markers over a full-scene FindObjects sweep.
+            // WebGL hollows SampleTile meshes but keeps pose anchors for ApplySampleTilePose.
             var setup = GameBoardSetup.Instance != null
                 ? GameBoardSetup.Instance
                 : Object.FindAnyObjectByType<GameBoardSetup>();
@@ -674,6 +671,9 @@ namespace PaiSho.Board
                 return;
             }
 
+#if UNITY_WEBGL && !UNITY_EDITOR
+            return;
+#else
             foreach (HandTraySlotMarker marker in Object.FindObjectsByType<HandTraySlotMarker>(
                          FindObjectsInactive.Exclude, FindObjectsSortMode.None))
             {

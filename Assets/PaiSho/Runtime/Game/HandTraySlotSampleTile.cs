@@ -19,9 +19,8 @@ namespace PaiSho.Game
                 return;
 
 #if UNITY_WEBGL && !UNITY_EDITOR
-            // Boot already destroys SampleTiles; if one survives, drop it before renderer walks.
-            Destroy(gameObject);
-            return;
+            // Keep the transform as a seating pose anchor; only strip meshes (HJ-37).
+            HandTrayLayoutUtility.HollowSampleTile(transform);
 #else
             // Desktop: keep GO active so Transform.Find / world bounds stay valid for seating.
             foreach (Renderer renderer in GetComponentsInChildren<Renderer>(true))

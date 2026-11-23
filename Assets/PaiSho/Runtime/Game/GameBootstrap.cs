@@ -78,15 +78,18 @@ namespace PaiSho.Game
             ReserveManager.Instance.InitializeDefaultReserves();
 
 #if UNITY_WEBGL && !UNITY_EDITOR
-            // HJ-25/HJ-32: defer Board.glb + stands + piece GLB loads until New Game so
-            // Safari callMain is not Instantiating gardens/tiles. Stagger frames between
-            // heavy steps to keep invoke_* trampolines from stacking.
+            // HJ-25/HJ-32/HJ-37: defer Board.glb + stands + piece GLB Instantiates until New
+            // Game so Safari callMain is not Instantiating gardens/tiles. SampleTile meshes
+            // are bake-stripped; still stagger frames between heavy steps.
             yield return TitleMenu.WaitUntilMatchRequested();
             yield return null;
+            yield return null;
             if (BoardManager.Instance != null)
-                yield return BoardManager.Instance.EnsurePiecePrefabsLoadedStaggered();
+                yield return BoardManager.Instance.EnsurePiecePrefabsLoadedStaggered(batchSize: 2);
+            yield return null;
             yield return null;
             SetupBoard();
+            yield return null;
             yield return null;
             PotVisualManager.Instance?.InitializeAnchors();
             yield return null;

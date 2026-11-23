@@ -31,10 +31,11 @@ namespace PaiSho.Game
 #if UNITY_WEBGL && !UNITY_EDITOR
         private void Awake()
         {
-            // Destroy authored SampleTile meshes before later Awake/Start traffic on Safari.
+            // Strip SampleTile meshes before later Awake/Start traffic on Safari, but keep the
+            // empty transform so ApplySampleTilePose can copy authored locals (HJ-37).
             Transform sample = transform.Find(SampleTileName);
             if (sample != null)
-                Destroy(sample.gameObject);
+                HandTrayLayoutUtility.HollowSampleTile(sample);
         }
 #endif
 
@@ -66,12 +67,11 @@ namespace PaiSho.Game
                 return;
 
 #if UNITY_WEBGL && !UNITY_EDITOR
-            // Destroy rather than walk GetComponentsInChildren — 0.1.15 SetActive(false) still
-            // left meshes in the hierarchy through callMain (HJ-32). Seating uses Slot_* +
-            // HandTrayAlignmentDefaults (no SampleTile activate).
+            // Keep pose anchor; only hollow meshes. Destroying the GO threw away SampleTile
+            // locals and forced Slot_* + FitPrefabScaleOnly seating (Chrome 0.1.16 miss).
             if (Application.isPlaying)
             {
-                Object.Destroy(sample.gameObject);
+                HandTrayLayoutUtility.HollowSampleTile(sample);
                 return;
             }
 
