@@ -42,6 +42,10 @@ namespace PaiSho.Game
             if (visual == null || sample == null || tilesRoot == null)
                 return;
 
+            // Parent first (world-preserve). Without this, localScale is applied under the scene
+            // root; when the tray later parents the tile, stand scale compounds (~2×) and rack
+            // tiles overflow/overlap (HJ-39).
+            visual.SetParent(tilesRoot, true);
             Vector3 parentLossy = tilesRoot.lossyScale;
             Vector3 sampleLossy = sample.lossyScale;
             visual.SetPositionAndRotation(sample.position, sample.rotation);
