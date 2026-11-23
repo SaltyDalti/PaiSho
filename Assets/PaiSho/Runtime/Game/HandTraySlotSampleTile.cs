@@ -15,11 +15,15 @@ namespace PaiSho.Game
 
         private void Start()
         {
-            // Keep the GameObject active so Transform.Find / world bounds stay valid for tray seating.
-            // Only strip interaction and visibility.
             if (!Application.isPlaying)
                 return;
 
+#if UNITY_WEBGL && !UNITY_EDITOR
+            // Boot already destroys SampleTiles; if one survives, drop it before renderer walks.
+            Destroy(gameObject);
+            return;
+#else
+            // Desktop: keep GO active so Transform.Find / world bounds stay valid for seating.
             foreach (Renderer renderer in GetComponentsInChildren<Renderer>(true))
             {
                 if (renderer != null)
@@ -31,6 +35,7 @@ namespace PaiSho.Game
                 if (collider != null)
                     collider.enabled = false;
             }
+#endif
         }
     }
 }

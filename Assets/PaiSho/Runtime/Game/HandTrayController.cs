@@ -54,7 +54,12 @@ namespace PaiSho.Game
             }
 
             Instance = this;
+#if UNITY_WEBGL && !UNITY_EDITOR
+            // Skip tray root bake / scene walks during callMain. BoardManager.Initialize →
+            // Refresh after New Game seats trays once stands exist (HJ-32).
+#else
             EnsureTrayRoots();
+#endif
         }
 
         private void OnDestroy()
@@ -222,6 +227,14 @@ namespace PaiSho.Game
 
             if (GameUI.IsBlockingBoardInput)
                 return;
+
+#if UNITY_WEBGL && !UNITY_EDITOR
+            // Title screen: do not EnsureTrayRoots / FindAnyObject every frame before New Game
+            // board rebuild — that re-enters scene walks during the Safari-hot window (HJ-32).
+            if (BoardManager.Instance == null ||
+                BoardManager.Instance.GetPlayerStandTransform(Player.Host) == null)
+                return;
+#endif
 
             EnsureTrayRoots();
             RefreshTrayVisibility(hostTray);
@@ -460,8 +473,16 @@ namespace PaiSho.Game
             if (standTransform == null)
                 return false;
 
-            // Authored Slot_* trays keep their stand-root local pose (Desktop scene + WebGL
-            // reattach/prefab restore). Do not reseat to mesh AABB — that was HJ-26/27 drift.
+            // Always parent HandTray* under the stand root at authored locals on WebGL.
+            // Captured scene poses can drift after Resources stand rebuild; Desktop preserve
+            // keeps scene locals when PreserveSceneAuthored (HJ-32).
+#if UNITY_WEBGL && !UNITY_EDITOR
+            tray.Root.SetParent(standTransform, false);
+            tray.Root.localPosition = HandTrayAlignmentDefaults.GetAuthoredTrayLocalPosition(tray.Owner);
+            tray.Root.localRotation = Quaternion.Euler(HandTrayAlignmentDefaults.GetAuthoredTrayLocalEuler(tray.Owner));
+            tray.Root.localScale = HandTrayAlignmentDefaults.AuthoredTrayLocalScale;
+            return BindStandAnchorFromSceneTray(tray, standTransform);
+#else
             if (UsesSceneSlotMarkers(tray) || IsDesktopPreservedTray(tray))
             {
                 EnsureTrayParentedToStandRoot(tray, standTransform);
@@ -480,6 +501,7 @@ namespace PaiSho.Game
             tray.DragSurfaceY = tray.Root.position.y + 0.05f;
             tray.DragPlane = new Plane(Vector3.up, new Vector3(0f, tray.DragSurfaceY, 0f));
             return true;
+#endif
         }
 
         private void ApplyTrayTunerOffset(TrayBinding tray)
