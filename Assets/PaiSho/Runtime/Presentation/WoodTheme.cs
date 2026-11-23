@@ -2554,9 +2554,9 @@ namespace PaiSho
                 AssignRendererMaterial(renderer, material);
             }
 
-            // Mesh name matches gameplay: GardenLight* = white/light, GardenDark* = red/dark
-            // (Dalton HJ-43). Assign by luminance so Create + Ensure stays idempotent — do not
-            // toggle. 0.1.19 mapped Light→darker (assumed name reverse) and stayed flipped.
+            // Mesh names GardenLight*/GardenDark* are reversed vs visible white/red gardens on
+            // the Resources board (Dalton live 0.1.20–0.1.21). Assign by luminance so Create +
+            // Ensure stays idempotent — do not toggle. 0.1.20 mapped Light→lighter; flip once.
             if (lightGardenMaterial != null && darkGardenMaterial != null)
             {
                 Material lighter;
@@ -2573,10 +2573,10 @@ namespace PaiSho
                 }
 
                 foreach (Renderer renderer in lightRenderers)
-                    AssignRendererMaterial(renderer, CreateMaterialInstance(lighter));
+                    AssignRendererMaterial(renderer, CreateMaterialInstance(darker));
 
                 foreach (Renderer renderer in darkRenderers)
-                    AssignRendererMaterial(renderer, CreateMaterialInstance(darker));
+                    AssignRendererMaterial(renderer, CreateMaterialInstance(lighter));
             }
         }
 
