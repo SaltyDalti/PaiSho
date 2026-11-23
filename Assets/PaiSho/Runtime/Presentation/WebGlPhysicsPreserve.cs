@@ -10,10 +10,20 @@ namespace PaiSho.Presentation
     /// when nothing AddComponent&lt;T&gt;s those types directly.
     /// </summary>
     [Preserve]
-    internal static class WebGlPhysicsPreserve
+    public static class WebGlPhysicsPreserve
     {
         [Preserve]
         static WebGlPhysicsPreserve()
+        {
+            EnsureCollidersPreserved();
+        }
+
+        /// <summary>
+        /// Call before <see cref="GameObject.CreatePrimitive"/> so IL2CPP keeps CapsuleCollider
+        /// (Cylinder) / SphereCollider / BoxCollider under stripEngineCode.
+        /// </summary>
+        [Preserve]
+        public static void EnsureCollidersPreserved()
         {
             _ = typeof(BoxCollider);
             _ = typeof(CapsuleCollider);
@@ -25,7 +35,7 @@ namespace PaiSho.Presentation
         [Preserve]
         static void Touch()
         {
-            // No-op: static ctor + Preserve keep the types in the player.
+            EnsureCollidersPreserved();
         }
     }
 }

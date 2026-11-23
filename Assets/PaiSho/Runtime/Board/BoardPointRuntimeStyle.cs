@@ -15,18 +15,19 @@ namespace PaiSho.Board
 
         private static BoardPointTunerSettings CreateGameplay()
         {
-            // Diameter tracks F8 BoardAlignmentDefaults. Height stays a thin disc lift — the
-            // tuner MarkerHeightOffset (~0.086) is for editor spheres and floated WebGL discs
-            // off the wood after #23 (HJ-30).
+            // Visibility-first (HJ-53 / 0.1.25): Resources Board.glb has no BoardLines, so these
+            // discs are the only grid. Prior thin dark wood-tone discs (HJ-30) were too easy to
+            // miss on WebGL — use F8 cyan + larger diameter/lift so Dalton can see points before
+            // pitch tuning. showMarkers must stay true.
             var s = new BoardPointTunerSettings
             {
                 showMarkers = true,
                 showLabels = false,
                 colorByGarden = false,
-                markerDiameterScale = BoardAlignmentDefaults.MarkerDiameterScale,
-                markerHeightOffset = 0.018f,
-                markerAlpha = 0.72f,
-                markerColor = new Color(0.22f, 0.2f, 0.18f, 0.72f)
+                markerDiameterScale = 0.32f,
+                markerHeightOffset = 0.05f,
+                markerAlpha = 0.92f,
+                markerColor = BoardAlignmentDefaults.MarkerColor
             };
             s.SyncMarkerColorAlpha();
             return s;

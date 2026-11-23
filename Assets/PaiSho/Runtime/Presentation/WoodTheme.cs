@@ -665,7 +665,8 @@ namespace PaiSho
                          ?? Shader.Find("Standard");
 
             var material = new Material(shader);
-            ConfigureTransparentMaterial(material, color, gameplay ? 0.32f : 0.45f);
+            // Gameplay discs need to read on WebGL wood (0.1.25 visibility); tuner can stay softer.
+            ConfigureTransparentMaterial(material, color, gameplay ? 1.1f : 0.45f);
             material.renderQueue = 3100;
             return material;
         }
