@@ -1745,8 +1745,7 @@ namespace PaiSho
             float epsilon = Mathf.Max(0.0001f, layout.CellSpacing * Mathf.Clamp(epsilonFraction, 0.005f, 0.1f));
             Vector3 southTarget = layout.CoordinateToWorld(BoardUtils.SouthGate);
             Vector3 northTarget = layout.CoordinateToWorld(BoardUtils.NorthGate);
-            Vector3 southActual = southGate.bounds.center;
-            Vector3 northActual = northGate.bounds.center;
+            GetGatePairLayoutPoints(southGate.bounds, northGate.bounds, out Vector3 southActual, out Vector3 northActual);
 
             float southErr = Vector2.Distance(
                 new Vector2(southTarget.x, southTarget.z),
@@ -2224,11 +2223,36 @@ namespace PaiSho
             if (rowDelta <= 0)
                 return false;
 
-            Vector3 south = southGate.bounds.center;
-            Vector3 north = northGate.bounds.center;
+            // Inner faces (toward board mid), not AABB centers — centers sit mid-wedge and
+            // overestimate pitch vs carved garden seams / Desktop F8 (~0.895 of center pitch).
+            GetGatePairLayoutPoints(southGate.bounds, northGate.bounds, out Vector3 south, out Vector3 north);
             float distance = Vector2.Distance(new Vector2(south.x, south.z), new Vector2(north.x, north.z));
             pitch = distance / rowDelta;
             return pitch > 0.001f;
+        }
+
+        /// <summary>
+        /// Gate layout anchors: AABB face of each gate closest to the pair midpoint (garden-side
+        /// edge). Board.glb Gate* wedges span ~inner garden diamond to outer tip; bounds.center
+        /// is mid-wedge and is too far apart for CellSpacing vs carved intersections (HJ-51).
+        /// </summary>
+        private static void GetGatePairLayoutPoints(
+            Bounds southGateBounds,
+            Bounds northGateBounds,
+            out Vector3 southPoint,
+            out Vector3 northPoint)
+        {
+            Vector3 mid = (southGateBounds.center + northGateBounds.center) * 0.5f;
+            southPoint = ClosestPointOnBoundsXZ(southGateBounds, mid);
+            northPoint = ClosestPointOnBoundsXZ(northGateBounds, mid);
+        }
+
+        private static Vector3 ClosestPointOnBoundsXZ(Bounds bounds, Vector3 point)
+        {
+            return new Vector3(
+                Mathf.Clamp(point.x, bounds.min.x, bounds.max.x),
+                bounds.center.y,
+                Mathf.Clamp(point.z, bounds.min.z, bounds.max.z));
         }
 
         private static void AlignGridCenterToMiddleGate(GameObject boardModel, BoardLayout layout)
@@ -2258,8 +2282,7 @@ namespace PaiSho
 
             Vector3 southTarget = layout.CoordinateToWorld(southGateCoordinate);
             Vector3 northTarget = layout.CoordinateToWorld(northGateCoordinate);
-            Vector3 southActual = southGate.bounds.center;
-            Vector3 northActual = northGate.bounds.center;
+            GetGatePairLayoutPoints(southGate.bounds, northGate.bounds, out Vector3 southActual, out Vector3 northActual);
 
             Vector3 delta = new Vector3(
                 (southTarget.x - southActual.x + northTarget.x - northActual.x) * 0.5f,

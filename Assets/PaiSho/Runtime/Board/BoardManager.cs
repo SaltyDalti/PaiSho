@@ -795,10 +795,9 @@ namespace PaiSho.Board
                 // Desktop-tuned knobs first; gate pitch then locks CellSpacing to this GLB.
                 BoardAlignmentDefaults.ApplyTo(boardLayout);
 #if UNITY_WEBGL && !UNITY_EDITOR
-                // Desktop GridSpacingScale (≈0.895) + SpacingFineTune (≈0.995) shrink
-                // CoordinateToWorld vs Resources Board.glb gate pitch; FineAlign only translates,
-                // so points miss carved intersections and stands drift (HJ-26: southΔ≈4.5 with
-                // yaw 0; live 0.1.22 still off with fineTune≠1). Match mesh pitch 1:1 on WebGL.
+                // Gate pitch is measured from Gate* inner faces (garden-side), not AABB centers
+                // (HJ-51). Keep scale/fineTune at 1 so CellSpacing matches that mesh pitch 1:1.
+                // Desktop F8 GridSpacingScale≈0.895 was compensating for center-based measure.
                 boardLayout.SetGridSpacingScale(1f);
                 boardLayout.SetSpacingFineTune(1f);
                 boardLayout.SetGridOffset(Vector2.zero);
