@@ -22,6 +22,17 @@ namespace PaiSho.Game
         public static readonly Vector3 StandExtraOffset = Vector3.zero;
 
         /// <summary>
+        /// WebGL Resources board + FineAlign: push stands further past the gate onto the outer
+        /// rim (0.1.19 sat too close to center / clipped the garden wood).
+        /// </summary>
+        public const float WebGlStandSouthCells = 6.1f;
+        /// <summary>
+        /// Extra world Y after Align seats mesh bottom on TileHeight — board rim sits above the
+        /// garden surface; without this the crescent sinks into the rim (HJ-43).
+        /// </summary>
+        public const float WebGlStandRimLift = 0.11f;
+
+        /// <summary>
         /// HandTray* localPosition under PlayerStand* as authored in GamePlay / GameBoardSetup prefab.
         /// Not the same as TrayLocalOffset (F9 tuner delta on top of a live tray).
         /// </summary>
