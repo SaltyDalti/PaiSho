@@ -1913,9 +1913,6 @@ namespace PaiSho
             if (stand == null || layout == null)
                 return;
 
-            float southCells = tuner != null
-                ? tuner.standSouthCells
-                : HandTrayAlignmentDefaults.StandSouthCells;
             float eastCells = tuner != null
                 ? tuner.standEastCells
                 : HandTrayAlignmentDefaults.StandEastCells;
@@ -1932,15 +1929,25 @@ namespace PaiSho
                 ? tuner.standExtraOffset
                 : HandTrayAlignmentDefaults.StandExtraOffset;
 
-            AlignPlayerStandToGate(stand, layout, player, southCells, eastCells);
-
 #if UNITY_WEBGL && !UNITY_EDITOR
-            // Keep authored Desktop stand scale so HandTray*/Slot_*/SampleTile locals compose
-            // like GamePlay.unity (HJ-39). Gate Align still places the crescent; south/east
-            // cells remain the size/position knobs — not AABB remesh.
+            // Scale first so Align's bounds lift matches final authored size (HJ-43).
             _ = scaleMultiplier;
             stand.localScale = Vector3.one * HandTrayAlignmentDefaults.AuthoredStandLocalScale;
+
+            float southCells = tuner != null
+                ? tuner.standSouthCells
+                : HandTrayAlignmentDefaults.WebGlStandSouthCells;
+            AlignPlayerStandToGate(stand, layout, player, southCells, eastCells);
+
+            // Align seats mesh bottom on TileHeight (garden surface). Rim is higher — raise so
+            // the crescent rests on the rim instead of clipping into the board (live 0.1.19).
+            stand.position += Vector3.up * HandTrayAlignmentDefaults.WebGlStandRimLift;
 #else
+            float southCells = tuner != null
+                ? tuner.standSouthCells
+                : HandTrayAlignmentDefaults.StandSouthCells;
+            AlignPlayerStandToGate(stand, layout, player, southCells, eastCells);
+
             Renderer renderer = stand.GetComponentInChildren<Renderer>();
             if (renderer != null)
             {
@@ -1955,8 +1962,13 @@ namespace PaiSho
             if (Mathf.Abs(yawOffset) > 0.001f)
                 stand.Rotate(Vector3.up, yawOffset, Space.World);
 
+#if UNITY_WEBGL && !UNITY_EDITOR
+            // Desktop F9 StandLiftOffset is slightly negative; WebGL rim lift already applied.
+            _ = liftOffset;
+#else
             if (Mathf.Abs(liftOffset) > 0.0001f)
                 stand.position += Vector3.up * liftOffset;
+#endif
 
             if (extraOffset.sqrMagnitude > 0.000001f)
                 stand.position += stand.right * extraOffset.x + stand.up * extraOffset.y + stand.forward * extraOffset.z;
@@ -2542,9 +2554,9 @@ namespace PaiSho
                 AssignRendererMaterial(renderer, material);
             }
 
-            // GardenLight/GardenDark mesh names are reversed vs gameplay white/red gardens.
-            // Assign by luminance (idempotent) — a second call must not toggle back (HJ-41:
-            // CreateModelBoardSurface + EnsureBoardModelMaterialTweaks double-swap flipped 0.1.18).
+            // Mesh name matches gameplay: GardenLight* = white/light, GardenDark* = red/dark
+            // (Dalton HJ-43). Assign by luminance so Create + Ensure stays idempotent — do not
+            // toggle. 0.1.19 mapped Light→darker (assumed name reverse) and stayed flipped.
             if (lightGardenMaterial != null && darkGardenMaterial != null)
             {
                 Material lighter;
@@ -2561,10 +2573,10 @@ namespace PaiSho
                 }
 
                 foreach (Renderer renderer in lightRenderers)
-                    AssignRendererMaterial(renderer, CreateMaterialInstance(darker));
+                    AssignRendererMaterial(renderer, CreateMaterialInstance(lighter));
 
                 foreach (Renderer renderer in darkRenderers)
-                    AssignRendererMaterial(renderer, CreateMaterialInstance(lighter));
+                    AssignRendererMaterial(renderer, CreateMaterialInstance(darker));
             }
         }
 
