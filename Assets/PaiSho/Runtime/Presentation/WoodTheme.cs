@@ -1838,6 +1838,13 @@ namespace PaiSho
             EnsurePlayerStandVisible(instance);
             StripColliders(instance);
 
+#if UNITY_WEBGL && !UNITY_EDITOR
+            // Match GamePlay PrefabInstance stand scale 0.5. CellSpacing remesh from world-AABB
+            // after gate Align underestimates span → tiny/crumpled crescent and collapsed Slot_*
+            // spacing (HJ-39 live 0.1.17). Tray/SampleTile locals were authored under 0.5.
+            instance.transform.localScale =
+                Vector3.one * HandTrayAlignmentDefaults.AuthoredStandLocalScale;
+#else
             Renderer renderer = instance.GetComponentInChildren<Renderer>();
             if (renderer != null)
             {
@@ -1847,6 +1854,7 @@ namespace PaiSho
                 if (longSpan > 0.001f)
                     instance.transform.localScale = Vector3.one * (targetSpan / longSpan);
             }
+#endif
 
             AlignPlayerStandToGate(instance.transform, layout, player);
             return instance.transform;
@@ -1926,18 +1934,23 @@ namespace PaiSho
 
             AlignPlayerStandToGate(stand, layout, player, southCells, eastCells);
 
+#if UNITY_WEBGL && !UNITY_EDITOR
+            // Keep authored Desktop stand scale so HandTray*/Slot_*/SampleTile locals compose
+            // like GamePlay.unity (HJ-39). Gate Align still places the crescent; south/east
+            // cells remain the size/position knobs — not AABB remesh.
+            _ = scaleMultiplier;
+            stand.localScale = Vector3.one * HandTrayAlignmentDefaults.AuthoredStandLocalScale;
+#else
             Renderer renderer = stand.GetComponentInChildren<Renderer>();
             if (renderer != null)
             {
                 Bounds localBounds = ComputeRendererLocalBounds(renderer);
                 float longSpan = Mathf.Max(localBounds.size.x, localBounds.size.z);
-                // Uniform remesh keeps authored HandTray*/Slot_* locals under the stand root
-                // (HJ-29). Do not force scene PrefabInstance scale 0.5 — gate CellSpacing drives
-                // stand size so the crescent tracks the board.
                 float targetSpan = layout.CellSpacing * 6f * scaleMultiplier;
                 if (longSpan > 0.001f)
                     stand.localScale = Vector3.one * (targetSpan / longSpan);
             }
+#endif
 
             if (Mathf.Abs(yawOffset) > 0.001f)
                 stand.Rotate(Vector3.up, yawOffset, Space.World);
@@ -1962,9 +1975,10 @@ namespace PaiSho
                 renderer.gameObject.SetActive(true);
                 renderer.enabled = true;
 #if UNITY_WEBGL && !UNITY_EDITOR
-                // FrameWood (#241810) × dark_oak reads as matte black under WebGL URP lighting
-                // (HJ-26/HJ-27). Keep the oak albedo but tint with StandWood so grain stays visible.
-                ApplyTexturedWood(renderer, "Scene/dark_oak", StandWood, 0.42f, 2.2f);
+                // Textured dark_oak (+ EnsureMaterials skip) still reads as matte black / metallic
+                // shards on live WebGL (HJ-26, HJ-39 0.1.17 shots). Solid mid wood matches the
+                // readable stand that landed in 85aed35.
+                ApplyWood(renderer, StandWood, 0.42f);
 #else
                 ApplyTexturedWood(renderer, "Scene/dark_oak", FrameWood, 0.45f, 2.2f);
 #endif

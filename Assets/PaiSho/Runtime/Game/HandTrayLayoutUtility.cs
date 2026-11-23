@@ -70,10 +70,10 @@ namespace PaiSho.Game
                 slotIndex = marker.SlotIndex;
             }
 
-            // Faithful C# seating: copy SampleTile world pose + lossy scale. WebGL keeps empty
-            // pose anchors (meshes stripped at bake / boot) so Safari never skins fourteen tiles
-            // while Chrome still gets the authored offsets — not Slot_* + FitPrefabScaleOnly.
-            // cellSpacing is unused here on purpose: SampleTile lossyScale is the authored size.
+            // Faithful C# seating under authored stand scale 0.5: SampleTile world pose + lossy
+            // scale, parented under tilesRoot. WebGL keeps empty pose anchors (bake/boot strip)
+            // so Safari never skins SampleTile meshes. cellSpacing unused — Desktop SampleTile
+            // scale is the rack size once the stand matches GamePlay's 0.5 (HJ-39).
             _ = cellSpacing;
             Transform sample = EnsureSamplePoseAnchor(slotMarker, owner, slotIndex);
             BoardSideLayoutUtility.ApplySampleTilePose(visual.transform, sample, tilesRoot);
