@@ -13,7 +13,11 @@ namespace PaiSho.Game
         public const float StandEastCells = 3.2105300426483156f;
         public const float StandLiftOffset = -0.008748340420424939f;
         public const float StandYawOffset = 0f;
-        public const float StandScaleMultiplier = 1.5f;
+        /// <summary>
+        /// Extra stand size vs CellSpacing×6. 1.0 keeps crescent width near board cell span so
+        /// CellSpacing-fitted tray tiles sit in the rack (1.5 left tiles overflowing).
+        /// </summary>
+        public const float StandScaleMultiplier = 1f;
         /// <summary>
         /// GamePlay PrefabInstance override on PlayerStand (uniform). Authored HandTray* /
         /// Slot_* locals were tuned in this stand-root space.

@@ -70,16 +70,19 @@ namespace PaiSho.Game
                 slotIndex = marker.SlotIndex;
             }
 
-            // Seat at authored SampleTile world pose (Host/Opponent offsets), parented under the
-            // tray tiles root. Then FitPrefabScaleOnly(cellSpacing) so tray tiles match board
-            // tile diameter — SampleTile localScale 0.467 was tuned under stand scale 0.5;
-            // WebGL remeshes stands to CellSpacing×6×1.5, so copying lossyScale alone oversizes
-            // tiles on the rack (HJ-39). Keep SampleTile position/rotation; replace scale.
+            // Seat at authored SampleTile world pose (Host/Opponent offsets). Copy position/
+            // rotation only, then FitPrefabScaleOnly so diameter matches board tiles. SampleTile
+            // localScale 0.467 was tuned under stand 0.5; remesh + lossy copy oversized rack
+            // tiles (HJ-39).
             Transform sample = EnsureSamplePoseAnchor(slotMarker, owner, slotIndex);
             ApplyAuthoredSampleLocals(sample, owner, slotIndex);
-            BoardSideLayoutUtility.ApplySampleTilePose(visual.transform, sample, tilesRoot);
+            visual.transform.SetParent(tilesRoot, false);
+            visual.transform.SetPositionAndRotation(sample.position, sample.rotation);
+            visual.transform.localScale = Vector3.one;
             if (cellSpacing > 0.0001f)
                 WoodTheme.FitPrefabScaleOnly(visual, cellSpacing);
+            else
+                BoardSideLayoutUtility.ApplySampleTilePose(visual.transform, sample, tilesRoot);
 
 #if !UNITY_WEBGL || UNITY_EDITOR
             sample.gameObject.SetActive(true);

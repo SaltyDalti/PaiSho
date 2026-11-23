@@ -1634,7 +1634,14 @@ namespace PaiSho
             GameObject instance = Object.Instantiate(modelRoot);
             instance.name = "BoardModel";
             instance.transform.SetParent(surfaceRoot.transform, false);
+#if UNITY_WEBGL && !UNITY_EDITOR
+            // Identity keeps GateForeign/Home on world ±Z with layout yaw 0 so Host/Opponent
+            // stands sit south/north (camera bottom/top). Y=90 + layout yaw −90 put them on ±X
+            // (left/right on screen) (HJ-39).
+            instance.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+#else
             instance.transform.SetPositionAndRotation(Vector3.zero, Quaternion.Euler(0f, 90f, 0f));
+#endif
             instance.transform.localScale = Vector3.one;
 
             // On WebGL, keep imported glTF/URP materials. EnsureMaterials → ToUrpMaterial

@@ -778,9 +778,9 @@ namespace PaiSho.Board
                 boardLayout.SetGridSpacingScale(1f);
                 boardLayout.SetSpacingFineTune(BoardAlignmentDefaults.SpacingFineTune);
                 boardLayout.SetGridOffset(Vector2.zero);
-                // CreateModelBoardSurface instances Board at Y=90; keep layout NS on the same
-                // world axis or FineAlign's average translation is a no-op and trays float.
-                boardLayout.SetGridYawDegrees(-90f);
+                // Board.glb instances at identity on WebGL; yaw 0 keeps South/North on ±Z with
+                // the camera (HJ-39). Prior −90 paired with Y=90 put stands on ±X.
+                boardLayout.SetGridYawDegrees(0f);
 #endif
 
                 var modelSurface = WoodTheme.CreateModelBoardSurface(
