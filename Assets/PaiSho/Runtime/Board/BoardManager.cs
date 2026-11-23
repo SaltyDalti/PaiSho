@@ -795,12 +795,12 @@ namespace PaiSho.Board
                 // Desktop-tuned knobs first; gate pitch then locks CellSpacing to this GLB.
                 BoardAlignmentDefaults.ApplyTo(boardLayout);
 #if UNITY_WEBGL && !UNITY_EDITOR
-                // Desktop GridSpacingScale (≈0.895) shrinks CoordinateToWorld vs the Resources
-                // Board.glb gate pitch; FineAlign only translates, so stands/trays drift ~cells
-                // off the carved board (HJ-26 live: southΔ=northΔ≈4.5). Match mesh 1:1 on WebGL,
-                // but keep Desktop SpacingFineTune so intersection discs track carved lines.
+                // Desktop GridSpacingScale (≈0.895) + SpacingFineTune (≈0.995) shrink
+                // CoordinateToWorld vs Resources Board.glb gate pitch; FineAlign only translates,
+                // so points miss carved intersections and stands drift (HJ-26: southΔ≈4.5 with
+                // yaw 0; live 0.1.22 still off with fineTune≠1). Match mesh pitch 1:1 on WebGL.
                 boardLayout.SetGridSpacingScale(1f);
-                boardLayout.SetSpacingFineTune(BoardAlignmentDefaults.SpacingFineTune);
+                boardLayout.SetSpacingFineTune(1f);
                 boardLayout.SetGridOffset(Vector2.zero);
                 // CreateModelBoardSurface instances Board at Y=90; keep layout NS on the same
                 // world axis or FineAlign's average translation is a no-op and trays float.
