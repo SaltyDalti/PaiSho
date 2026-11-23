@@ -70,13 +70,22 @@ namespace PaiSho.Game
                 slotIndex = marker.SlotIndex;
             }
 
-            // Faithful C# seating under authored stand scale 0.5: SampleTile world pose + lossy
+            // Faithful C# seating under authored stand hierarchy: SampleTile world pose + lossy
             // scale, parented under tilesRoot. WebGL keeps empty pose anchors (bake/boot strip)
             // so Safari never skins SampleTile meshes. cellSpacing unused — Desktop SampleTile
-            // scale is the rack size once the stand matches GamePlay's 0.5 (HJ-39).
+            // scale is the rack size under stand 0.5 (HJ-39/HJ-41).
             _ = cellSpacing;
             Transform sample = EnsureSamplePoseAnchor(slotMarker, owner, slotIndex);
             BoardSideLayoutUtility.ApplySampleTilePose(visual.transform, sample, tilesRoot);
+
+            // Hollow pose anchors keep SampleTile root TRS but drop mesh-child lean. When the
+            // Slot_* marker itself has identity euler (GamePlay), compose the F9 rack tilt so
+            // discs lean into the crescent like Desktop SampleTile meshes did visually.
+            if (!HasRenderableMesh(sample) && slotMarker.localEulerAngles.sqrMagnitude < 0.01f)
+            {
+                visual.transform.rotation = sample.rotation *
+                    Quaternion.Euler(HandTrayAlignmentDefaults.GetSlotEuler(slotIndex, owner));
+            }
 
 #if !UNITY_WEBGL || UNITY_EDITOR
             sample.gameObject.SetActive(true);
