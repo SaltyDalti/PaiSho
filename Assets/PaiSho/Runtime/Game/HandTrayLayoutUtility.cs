@@ -35,16 +35,21 @@ namespace PaiSho.Game
                 Transform slotTransform = slot.transform;
                 slotTransform.SetParent(trayRoot, false);
                 slotTransform.localPosition = HandTrayAlignmentDefaults.GetSlotPosition(i, player);
-                slotTransform.localRotation = Quaternion.Euler(HandTrayAlignmentDefaults.GetSlotEuler(i, player));
+                // Scene Slot_* use identity local euler; SampleTile carries the seat pose.
+                slotTransform.localRotation = Quaternion.identity;
 
                 var marker = slot.AddComponent<HandTraySlotMarker>();
                 marker.Configure(i, player);
+                EnsureSamplePoseAnchor(slotTransform, player, i);
             }
 
             return trayRoot;
         }
 
-        /// <summary>Seat a runtime hand tile on a baked slot marker, matching SampleTile when present.</summary>
+        /// <summary>
+        /// Seat a runtime hand tile on a baked slot marker, matching authored SampleTile pose
+        /// (Desktop C# path: <see cref="BoardSideLayoutUtility.ApplySampleTilePose"/>).
+        /// </summary>
         public static void ApplyRuntimeTileToSlot(
             GameObject visual,
             Transform slotMarker,
@@ -65,26 +70,20 @@ namespace PaiSho.Game
                 slotIndex = marker.SlotIndex;
             }
 
-#if UNITY_WEBGL && !UNITY_EDITOR
-            // WebGL destroys SampleTiles at boot (Safari). Seat from authored Slot_* locals +
-            // HandTrayAlignmentDefaults euler, scaled to CellSpacing like board tiles — not
-            // inactive SampleTile lossyScale (authored under stand scale 0.5) (HJ-32).
-            SeatFromAuthoredSlot(visual, slotMarker, tilesRoot, cellSpacing, owner, slotIndex);
-#else
-            Transform sample = FindSampleTile(slotMarker);
-            if (sample != null)
+            // Faithful C# seating: copy SampleTile world pose + lossy scale. WebGL keeps empty
+            // pose anchors (meshes stripped at bake / boot) so Safari never skins fourteen tiles
+            // while Chrome still gets the authored offsets — not Slot_* + FitPrefabScaleOnly.
+            // cellSpacing is unused here on purpose: SampleTile lossyScale is the authored size.
+            _ = cellSpacing;
+            Transform sample = EnsureSamplePoseAnchor(slotMarker, owner, slotIndex);
+            BoardSideLayoutUtility.ApplySampleTilePose(visual.transform, sample, tilesRoot);
+
+#if !UNITY_WEBGL || UNITY_EDITOR
+            sample.gameObject.SetActive(true);
+            foreach (Renderer renderer in sample.GetComponentsInChildren<Renderer>(true))
             {
-                BoardSideLayoutUtility.ApplySampleTilePose(visual.transform, sample, tilesRoot);
-                sample.gameObject.SetActive(true);
-                foreach (Renderer renderer in sample.GetComponentsInChildren<Renderer>(true))
-                {
-                    if (renderer != null)
-                        renderer.enabled = false;
-                }
-            }
-            else
-            {
-                SeatFromAuthoredSlot(visual, slotMarker, tilesRoot, cellSpacing, owner, slotIndex);
+                if (renderer != null)
+                    renderer.enabled = false;
             }
 #endif
 
@@ -93,26 +92,108 @@ namespace PaiSho.Game
             BoardSideLayoutUtility.EnsureRuntimeTileVisible(visual, pieceType);
         }
 
-        private static void SeatFromAuthoredSlot(
-            GameObject visual,
-            Transform slotMarker,
-            Transform tilesRoot,
-            float cellSpacing,
-            Player owner,
-            int slotIndex)
+        /// <summary>
+        /// Empty SampleTile transform with authored local TRS. Meshes optional (Desktop);
+        /// WebGL strips meshes but keeps this anchor for <see cref="ApplySampleTilePose"/>.
+        /// </summary>
+        public static Transform EnsureSamplePoseAnchor(Transform slotMarker, Player owner, int slotIndex)
         {
-            visual.transform.SetParent(tilesRoot, false);
-            visual.transform.localScale = Vector3.one;
+            Transform sample = FindSampleTile(slotMarker);
+            if (sample != null)
+                return sample;
 
-            // Scene Slot_* often have identity local euler; tilt lives in SampleTile / defaults.
-            Quaternion authoredTilt = Quaternion.Euler(HandTrayAlignmentDefaults.GetSlotEuler(slotIndex, owner));
-            bool slotHasAuthoredTilt = slotMarker.localEulerAngles.sqrMagnitude > 0.01f;
-            Quaternion worldRotation = slotHasAuthoredTilt
-                ? slotMarker.rotation
-                : slotMarker.rotation * authoredTilt;
+            var go = new GameObject(HandTraySlotMarker.SampleTileName);
+            sample = go.transform;
+            sample.SetParent(slotMarker, false);
+            ApplyAuthoredSampleLocals(sample, owner, slotIndex);
+            return sample;
+        }
 
-            visual.transform.SetPositionAndRotation(slotMarker.position, worldRotation);
-            WoodTheme.FitPrefabScaleOnly(visual, cellSpacing);
+        public static void ApplyAuthoredSampleLocals(Transform sample, Player owner, int slotIndex)
+        {
+            if (sample == null)
+                return;
+
+            sample.localPosition = HandTrayAlignmentDefaults.GetSampleTileLocalPosition(slotIndex, owner);
+            sample.localRotation = Quaternion.Euler(
+                HandTrayAlignmentDefaults.GetSampleTileLocalEuler(slotIndex, owner));
+            sample.localScale = HandTrayAlignmentDefaults.AuthoredSampleTileLocalScale;
+        }
+
+        /// <summary>
+        /// Remove mesh/collider/skin weight from a SampleTile while keeping the transform pose.
+        /// Used on WebGL so Safari never deserializes/skins authored piece meshes at callMain.
+        /// </summary>
+        public static void HollowSampleTile(Transform sample)
+        {
+            if (sample == null)
+                return;
+
+            // Destroy nested mesh children first (piece prefab hierarchy under SampleTile).
+            for (int i = sample.childCount - 1; i >= 0; i--)
+            {
+                Transform child = sample.GetChild(i);
+                if (child != null)
+                    DestroyUnityObject(child.gameObject);
+            }
+
+            StripComponents(sample.gameObject);
+            sample.gameObject.name = HandTraySlotMarker.SampleTileName;
+        }
+
+        public static bool HasRenderableMesh(Transform root)
+        {
+            if (root == null)
+                return false;
+
+            return root.GetComponentInChildren<MeshFilter>(true) != null
+                || root.GetComponentInChildren<SkinnedMeshRenderer>(true) != null
+                || root.GetComponentInChildren<MeshRenderer>(true) != null;
+        }
+
+        private static void StripComponents(GameObject root)
+        {
+            if (root == null)
+                return;
+
+            foreach (Collider collider in root.GetComponentsInChildren<Collider>(true))
+            {
+                if (collider != null)
+                    DestroyUnityObject(collider);
+            }
+
+            foreach (MeshFilter filter in root.GetComponentsInChildren<MeshFilter>(true))
+            {
+                if (filter != null)
+                    DestroyUnityObject(filter);
+            }
+
+            foreach (MeshRenderer renderer in root.GetComponentsInChildren<MeshRenderer>(true))
+            {
+                if (renderer != null)
+                    DestroyUnityObject(renderer);
+            }
+
+            foreach (SkinnedMeshRenderer skinned in root.GetComponentsInChildren<SkinnedMeshRenderer>(true))
+            {
+                if (skinned != null)
+                    DestroyUnityObject(skinned);
+            }
+        }
+
+        private static void DestroyUnityObject(Object obj)
+        {
+            if (obj == null)
+                return;
+
+#if UNITY_EDITOR
+            if (!Application.isPlaying)
+            {
+                Object.DestroyImmediate(obj);
+                return;
+            }
+#endif
+            Object.Destroy(obj);
         }
 
         private static Transform FindSampleTile(Transform slotMarker)
