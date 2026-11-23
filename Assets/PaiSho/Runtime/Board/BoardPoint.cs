@@ -1,6 +1,7 @@
 using UnityEngine;
 using PaiSho;
 using PaiSho.Game;
+using PaiSho.Presentation;
 
 namespace PaiSho.Board
 {
@@ -84,19 +85,24 @@ namespace PaiSho.Board
 
             EnsureVisual(settings == null);
             visual.SetActive(true);
+            visual.layer = 0;
 
-            float diameter = layout.CellSpacing * active.markerDiameterScale;
+            float diameter = Mathf.Max(0.08f, layout.CellSpacing * active.markerDiameterScale);
             bool isPort = BoardUtils.IsPort(Coordinate);
             if (isPort)
                 diameter *= 1.35f;
 
             bool gameplay = settings == null;
-            float discHeight = gameplay ? 0.008f : diameter * 0.35f;
+            // Flat 0.008 discs z-fought / vanished into wood on WebGL; keep a readable puck.
+            float discHeight = gameplay
+                ? Mathf.Max(0.022f, diameter * 0.18f)
+                : diameter * 0.35f;
             visual.transform.localScale = new Vector3(diameter, discHeight, diameter);
-            visual.transform.localPosition = Vector3.up * active.markerHeightOffset;
+            visual.transform.localPosition = Vector3.up * Mathf.Max(0.04f, active.markerHeightOffset);
 
             if (visualRenderer != null)
             {
+                visualRenderer.enabled = true;
                 visualRenderer.sharedMaterial = ResolveMarkerMaterial(active, gameplay, isPort);
                 if (gameplay)
                     WoodTheme.EnableTransparentSurface(visualRenderer);
@@ -165,8 +171,29 @@ namespace PaiSho.Board
                 }
             }
 
-            visual = GameObject.CreatePrimitive(gameplayDisc ? PrimitiveType.Cylinder : PrimitiveType.Sphere);
+            // Cylinder → CapsuleCollider; keep Physics types alive under WebGL stripEngineCode.
+            WebGlPhysicsPreserve.EnsureCollidersPreserved();
+
+            PrimitiveType primitive = gameplayDisc ? PrimitiveType.Cylinder : PrimitiveType.Sphere;
+            try
+            {
+                visual = GameObject.CreatePrimitive(primitive);
+            }
+            catch (System.Exception)
+            {
+                visual = null;
+            }
+
+            // Fallback if CreatePrimitive failed (stripped CapsuleCollider) — Cube only needs BoxCollider.
+            if (visual == null || visual.GetComponent<Renderer>() == null)
+            {
+                if (visual != null)
+                    Destroy(visual);
+                visual = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            }
+
             visual.name = gameplayDisc ? "IntersectionDisc" : VisualName;
+            visual.layer = 0;
             visual.transform.SetParent(transform, false);
             var collider = visual.GetComponent<Collider>();
             if (collider != null)
@@ -175,6 +202,7 @@ namespace PaiSho.Board
             visualRenderer = visual.GetComponent<Renderer>();
             if (visualRenderer != null)
             {
+                visualRenderer.enabled = true;
                 visualRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 visualRenderer.receiveShadows = false;
                 visualRenderer.material.renderQueue = 3100;
@@ -231,9 +259,10 @@ namespace PaiSho.Board
 
             Color c = color;
             if (gameplay)
-                c.a = Mathf.Max(c.a, 0.55f);
+                c.a = Mathf.Max(c.a, 0.85f);
 
-            WoodTheme.UpdateMarkerMaterial(markerMaterial, c, gameplay ? 0.85f : 1.2f);
+            // Brighter emission so cyan discs read on WebGL wood (visibility pass 0.1.25).
+            WoodTheme.UpdateMarkerMaterial(markerMaterial, c, gameplay ? 1.35f : 1.2f);
         }
 
         private static void EnsurePortMaterial(bool gameplay)
