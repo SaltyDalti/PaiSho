@@ -58280,7 +58280,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   cellSpacing: 0.42
-  tileHeight: 0
+  tileHeight: 0.138461
   boardOrigin: {fileID: 0}
   useModelBoard: 1
   usePhotoBoard: 1
@@ -58291,10 +58291,10 @@ MonoBehaviour:
   neutralGardenLighten: 0.45
   boardModelOffset: {x: 0, y: 0, z: 0}
   boardFloorY: -0.12
-  gridSpacingScale: 0.8951761
-  spacingFineTune: 0.99549294
-  pointHeightOffset: 0.010704226
-  boardPointColliderScale: 0.8647888
+  gridSpacingScale: 1.00671
+  spacingFineTune: 1.00103
+  pointHeightOffset: 0.0193196
+  boardPointColliderScale: 0.84402
   gridOffset: {x: 0, y: 0}
   pieceSurfaceLift: 0
   gridYawDegrees: 0

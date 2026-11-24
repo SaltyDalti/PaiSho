@@ -2,14 +2,14 @@ using UnityEngine;
 
 namespace PaiSho.Board
 {
-    /// <summary>Player-tuned board alignment from board point tuner export (2026-07-03).</summary>
+    /// <summary>Player-tuned board alignment from board point tuner export (2026-11-23).</summary>
     public static class BoardAlignmentDefaults
     {
-        public const float GridSpacingScale = 0.895176112651825f;
-        public const float SpacingFineTune = 0.9954929351806641f;
-        public const float TileHeight = 0f;
-        public const float PointHeightOffset = 0.010704225860536099f;
-        public const float BoardPointColliderScale = 0.8647887706756592f;
+        public const float GridSpacingScale = 1.0067100524902344f;
+        public const float SpacingFineTune = 1.0010299682617188f;
+        public const float TileHeight = 0.13846099376678468f;
+        public const float PointHeightOffset = 0.019319599494338037f;
+        public const float BoardPointColliderScale = 0.8440200090408325f;
 
         public const float GridOffsetX = 0f;
         public const float GridOffsetZ = 0f;
@@ -18,8 +18,8 @@ namespace PaiSho.Board
         public const float BoardModelOffsetY = 0f;
         public const float BoardModelOffsetZ = 0f;
 
-        public const float MarkerDiameterScale = 0.11999999731779099f;
-        public const float MarkerHeightOffset = 0.08588027954101563f;
+        public const float MarkerDiameterScale = 0.08900000154972077f;
+        public const float MarkerHeightOffset = 0.08588030189275742f;
         public const float MarkerAlpha = 0.8500000238418579f;
         public static readonly Color MarkerColor = new Color(0.2f, 0.85f, 1f, 0.8500000238418579f);
 
@@ -39,6 +39,7 @@ namespace PaiSho.Board
             layout.SetGridYawDegrees(0f);
             layout.SetBoardPointColliderScale(BoardPointColliderScale);
             layout.SetBoardModelOffset(new Vector3(BoardModelOffsetX, BoardModelOffsetY, BoardModelOffsetZ));
+            layout.SetBoardSurfaceHeight(TileHeight);
         }
 
         public static void ApplyTo(BoardPointTunerSettings settings)
@@ -61,6 +62,7 @@ namespace PaiSho.Board
             settings.markerHeightOffset = MarkerHeightOffset;
             settings.markerAlpha = MarkerAlpha;
             settings.markerColor = MarkerColor;
+            settings.showMarkers = true;
             settings.showLabels = true;
             settings.colorByGarden = true;
             settings.SyncMarkerColorAlpha();

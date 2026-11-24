@@ -5,7 +5,7 @@ namespace PaiSho.Board
     public class BoardLayout : MonoBehaviour
     {
         [SerializeField] private float cellSpacing = 0.42f;
-        [SerializeField] private float tileHeight;
+        [SerializeField] private float tileHeight = 0.13846099376678468f;
         [SerializeField] private Transform boardOrigin;
         [Header("Board Visual")]
         [SerializeField] private bool useModelBoard = true;
@@ -26,10 +26,10 @@ namespace PaiSho.Board
         [Tooltip("World Y for the bottom of the 3D board base (tatami floor level).")]
         [SerializeField] private float boardFloorY = -0.12f;
         [Tooltip("Fine-tune intersection spacing after measuring the 3D board (1 = exact).")]
-        [SerializeField] private float gridSpacingScale = 0.895176112651825f;
-        [SerializeField] private float spacingFineTune = 0.9954929351806641f;
-        [SerializeField] private float pointHeightOffset = 0.010704225860536099f;
-        [SerializeField] private float boardPointColliderScale = 0.8647887706756592f;
+        [SerializeField] private float gridSpacingScale = 1.0067100524902344f;
+        [SerializeField] private float spacingFineTune = 1.0010299682617188f;
+        [SerializeField] private float pointHeightOffset = 0.019319599494338037f;
+        [SerializeField] private float boardPointColliderScale = 0.8440200090408325f;
         [SerializeField] private Vector2 gridOffset;
         [SerializeField] private float pieceSurfaceLift;
         [Tooltip("Yaw of the logical grid in degrees. 0 = row axis along local +Z. Set from board gates on calibrate.")]

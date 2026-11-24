@@ -20,19 +20,19 @@ namespace PaiSho.Board
         public bool showMarkers = true;
         public bool showLabels = true;
         public bool colorByGarden = true;
-        public float markerDiameterScale = 0.11999999731779099f;
-        public float markerHeightOffset = 0.08588027954101563f;
+        public float markerDiameterScale = 0.08900000154972077f;
+        public float markerHeightOffset = 0.08588030189275742f;
         public float markerAlpha = 0.8500000238418579f;
         public Color markerColor = new Color(0.2f, 0.85f, 1f, 0.8500000238418579f);
 
-        public float gridSpacingScale = 0.895176112651825f;
-        public float spacingFineTune = 0.9954929351806641f;
+        public float gridSpacingScale = 1.0067100524902344f;
+        public float spacingFineTune = 1.0010299682617188f;
         public float gridOffsetX;
         public float gridOffsetZ;
         public float gridYawDegrees;
-        public float tileHeight;
-        public float tileHeightOffset = 0.010704225860536099f;
-        public float colliderScale = 0.8647887706756592f;
+        public float tileHeight = 0.13846099376678468f;
+        public float tileHeightOffset = 0.019319599494338037f;
+        public float colliderScale = 0.8440200090408325f;
 
         public float boardModelOffsetX;
         public float boardModelOffsetY;

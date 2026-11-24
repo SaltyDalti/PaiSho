@@ -797,7 +797,7 @@ namespace PaiSho.Board
 #if UNITY_WEBGL && !UNITY_EDITOR
                 // Gate pitch is measured from Gate* inner faces (garden-side), not AABB centers
                 // (HJ-51). Keep scale/fineTune at 1 so CellSpacing matches that mesh pitch 1:1.
-                // Desktop F8 GridSpacingScale≈0.895 was compensating for center-based measure.
+                // Desktop F8 2026-11-23 is already near 1 (≈1.0067 / 1.0010); WebGL stays exact 1.
                 boardLayout.SetGridSpacingScale(1f);
                 boardLayout.SetSpacingFineTune(1f);
                 boardLayout.SetGridOffset(Vector2.zero);
