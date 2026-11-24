@@ -801,9 +801,10 @@ namespace PaiSho.Board
                 boardLayout.SetGridSpacingScale(1f);
                 boardLayout.SetSpacingFineTune(1f);
                 boardLayout.SetGridOffset(Vector2.zero);
-                // CreateModelBoardSurface instances Board at Y=90; keep layout NS on the same
-                // world axis or FineAlign's average translation is a no-op and trays float.
-                boardLayout.SetGridYawDegrees(-90f);
+                // Board.glb is instanced at Y=90 so GardenLight* sit on BoardUtils SW+NE (white)
+                // wedges. Keep grid yaw 0 so light/dark coords land on those wedges — yaw -90
+                // aligned GateForeign/Home but swapped garden colors and sideways opening camera.
+                boardLayout.SetGridYawDegrees(0f);
 #endif
 
                 var modelSurface = WoodTheme.CreateModelBoardSurface(
@@ -825,7 +826,8 @@ namespace PaiSho.Board
                     // HJ-26: FineAlign + material tweaks run on WebGL again (tray seating +
                     // neutral garden tiling). EnsureMaterials stays skipped for Safari.
                     WoodTheme.FineAlignBoardModel(placedModel.gameObject, boardLayout);
-                    if (WoodTheme.TryMeasureNineteenByNineteenGridSpan(placedModel.gameObject, out float span))
+                    if (WoodTheme.TryMeasureNineteenByNineteenGridSpan(
+                            placedModel.gameObject, boardLayout, out float span))
                     {
                         boardLayout.RememberCalibratedGridSpan(span);
                         boardLayout.CalibrateFromBoardGridSpan(span);

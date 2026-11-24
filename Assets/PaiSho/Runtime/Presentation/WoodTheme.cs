@@ -1649,7 +1649,7 @@ namespace PaiSho
 
             float targetSpan = layout.GridSpan;
             float scale = 1f;
-            if (TryMeasureNineteenByNineteenGridSpan(instance, out float unitSpan19))
+            if (TryMeasureNineteenByNineteenGridSpan(instance, layout, out float unitSpan19))
             {
                 scale = targetSpan / unitSpan19;
                 alignedGridSpan = unitSpan19 * scale;
@@ -1736,10 +1736,9 @@ namespace PaiSho
             if (layout == null || boardModel == null)
                 return false;
 
-            if (!TryGetRendererByName(boardModel, "GateForeign", out Renderer southGate) ||
-                !TryGetRendererByName(boardModel, "GateHome", out Renderer northGate))
+            if (!TryResolveNorthSouthGateRenderers(boardModel, layout, out Renderer southGate, out Renderer northGate))
             {
-                Debug.LogWarning("Gate layout assert skipped — GateForeign/GateHome renderers missing.");
+                Debug.LogWarning("Gate layout assert skipped — NS Gate* renderers missing.");
                 return false;
             }
 
@@ -2201,7 +2200,14 @@ namespace PaiSho
 
             // Needed on WebGL too: without gate lock, PlayerStand CellSpacing/scale drifts and
             // hand-tray Slot_* seating misses the rack (HJ-26). EnsureMaterials stays skipped.
-            if (TryAlignGates(boardModel, layout, "GateForeign", BoardUtils.SouthGate, "GateHome", BoardUtils.NorthGate))
+            if (TryResolveNorthSouthGateRenderers(boardModel, layout, out Renderer southGate, out Renderer northGate) &&
+                TryAlignGates(
+                    boardModel,
+                    layout,
+                    southGate,
+                    BoardUtils.SouthGate,
+                    northGate,
+                    BoardUtils.NorthGate))
             {
                 AlignGridCenterToMiddleGate(boardModel, layout);
                 AlignBoardModelToFloor(boardModel, layout, recenterXZ: false);
@@ -2211,13 +2217,73 @@ namespace PaiSho
             CenterBoardLinesXZ(boardModel);
         }
 
+        /// <summary>
+        /// Pick the Gate* meshes closest to layout South/North. Board.glb at Y=90 puts
+        /// GateEast/West on world NS (yaw 0); unrotated / yaw±90 still resolves Foreign/Home.
+        /// </summary>
+        private static bool TryResolveNorthSouthGateRenderers(
+            GameObject boardModel,
+            BoardLayout layout,
+            out Renderer southGate,
+            out Renderer northGate)
+        {
+            southGate = null;
+            northGate = null;
+            if (boardModel == null)
+                return false;
+
+            Vector3 southTarget = layout != null
+                ? layout.CoordinateToWorld(BoardUtils.SouthGate)
+                : new Vector3(0f, 0f, -1f);
+            Vector3 northTarget = layout != null
+                ? layout.CoordinateToWorld(BoardUtils.NorthGate)
+                : new Vector3(0f, 0f, 1f);
+
+            float bestSouth = float.PositiveInfinity;
+            float bestNorth = float.PositiveInfinity;
+            string[] gateNames = { "GateForeign", "GateHome", "GateEast", "GateWest" };
+            foreach (string gateName in gateNames)
+            {
+                if (!TryGetRendererByName(boardModel, gateName, out Renderer renderer))
+                    continue;
+
+                Vector3 center = renderer.bounds.center;
+                float southDist = Vector2.Distance(
+                    new Vector2(center.x, center.z),
+                    new Vector2(southTarget.x, southTarget.z));
+                float northDist = Vector2.Distance(
+                    new Vector2(center.x, center.z),
+                    new Vector2(northTarget.x, northTarget.z));
+
+                if (southDist < bestSouth)
+                {
+                    bestSouth = southDist;
+                    southGate = renderer;
+                }
+
+                if (northDist < bestNorth)
+                {
+                    bestNorth = northDist;
+                    northGate = renderer;
+                }
+            }
+
+            return southGate != null && northGate != null && southGate != northGate;
+        }
+
         public static bool TryMeasureGatePitch(GameObject boardModel, out float pitch)
         {
+            return TryMeasureGatePitch(boardModel, layout: null, out pitch);
+        }
+
+        public static bool TryMeasureGatePitch(GameObject boardModel, BoardLayout layout, out float pitch)
+        {
             pitch = 0f;
-            if (!TryGetRendererByName(boardModel, "GateForeign", out Renderer southGate) ||
-                !TryGetRendererByName(boardModel, "GateHome", out Renderer northGate))
+            if (!TryResolveNorthSouthGateRenderers(boardModel, layout, out Renderer southGate, out Renderer northGate))
             {
-                return false;
+                if (!TryGetRendererByName(boardModel, "GateForeign", out southGate) ||
+                    !TryGetRendererByName(boardModel, "GateHome", out northGate))
+                    return false;
             }
 
             int rowDelta = BoardUtils.GetRow(BoardUtils.NorthGate) - BoardUtils.GetRow(BoardUtils.SouthGate);
@@ -2280,6 +2346,21 @@ namespace PaiSho
             {
                 return false;
             }
+
+            return TryAlignGates(
+                boardModel, layout, southGate, southGateCoordinate, northGate, northGateCoordinate);
+        }
+
+        private static bool TryAlignGates(
+            GameObject boardModel,
+            BoardLayout layout,
+            Renderer southGate,
+            int southGateCoordinate,
+            Renderer northGate,
+            int northGateCoordinate)
+        {
+            if (boardModel == null || layout == null || southGate == null || northGate == null)
+                return false;
 
             Vector3 southTarget = layout.CoordinateToWorld(southGateCoordinate);
             Vector3 northTarget = layout.CoordinateToWorld(northGateCoordinate);
@@ -2390,10 +2471,16 @@ namespace PaiSho
         }
 
         /// <summary>World span from outermost to outermost intersection on the 19×19 point grid (18 intervals).</summary>
-        public static bool TryMeasureNineteenByNineteenGridSpan(GameObject boardModel, out float span)
+        public static bool TryMeasureNineteenByNineteenGridSpan(GameObject boardModel, out float span) =>
+            TryMeasureNineteenByNineteenGridSpan(boardModel, layout: null, out span);
+
+        public static bool TryMeasureNineteenByNineteenGridSpan(
+            GameObject boardModel,
+            BoardLayout layout,
+            out float span)
         {
             span = 0f;
-            if (TryMeasureGatePitch(boardModel, out float pitch))
+            if (TryMeasureGatePitch(boardModel, layout, out float pitch))
             {
                 span = pitch * BoardUtils.GridIntervals;
                 return span > 0.001f;
@@ -2423,7 +2510,7 @@ namespace PaiSho
             // Keep axis-aligned grid (yaw 0) — tune in F8 if the mesh is rotated.
             layout.SetGridYawDegrees(0f);
 
-            if (TryMeasureNineteenByNineteenGridSpan(boardModel, out float span))
+            if (TryMeasureNineteenByNineteenGridSpan(boardModel, layout, out float span))
             {
                 layout.RememberCalibratedGridSpan(span);
                 layout.CalibrateFromBoardGridSpan(span);
@@ -2629,16 +2716,72 @@ namespace PaiSho
                 }
             }
 
+            // WebGL glTF imports sometimes strip Light/Dark from material names — fall back to
+            // luminance so GardenLight* still get the lighter (white) bake.
+            if (best == null)
+                best = PickGardenMaterialByLuminance(pool, wantLighter: wantLight);
+
             if (best == null)
                 return;
 
             // Already bound to the correct authored material (ignore " (Instance)" suffix).
             string current = renderer.sharedMaterial != null ? renderer.sharedMaterial.name : string.Empty;
             if (!string.IsNullOrEmpty(current) &&
-                current.StartsWith(best.name, System.StringComparison.OrdinalIgnoreCase))
+                (current.StartsWith(best.name, System.StringComparison.OrdinalIgnoreCase) ||
+                 best.name.StartsWith(StripMaterialInstanceSuffix(current), System.StringComparison.OrdinalIgnoreCase)))
                 return;
 
             AssignRendererMaterial(renderer, CreateMaterialInstance(best));
+        }
+
+        private static string StripMaterialInstanceSuffix(string materialName)
+        {
+            if (string.IsNullOrEmpty(materialName))
+                return string.Empty;
+            const string suffix = " (Instance)";
+            return materialName.EndsWith(suffix, System.StringComparison.Ordinal)
+                ? materialName.Substring(0, materialName.Length - suffix.Length)
+                : materialName;
+        }
+
+        private static Material PickGardenMaterialByLuminance(
+            System.Collections.Generic.List<Material> pool,
+            bool wantLighter)
+        {
+            Material best = null;
+            float bestLum = wantLighter ? float.NegativeInfinity : float.PositiveInfinity;
+            foreach (Material candidate in pool)
+            {
+                if (candidate == null)
+                    continue;
+                float lum = GardenMaterialLuminance(candidate);
+                if (wantLighter ? lum > bestLum : lum < bestLum)
+                {
+                    bestLum = lum;
+                    best = candidate;
+                }
+            }
+
+            return best;
+        }
+
+        private static float GardenMaterialLuminance(Material material)
+        {
+            if (material == null)
+                return 0f;
+
+            Color color = material.HasProperty("_BaseColor")
+                ? material.GetColor("_BaseColor")
+                : material.color;
+
+            // Texture-driven gardens: lean on name hints when present, else base color.
+            string name = material.name ?? string.Empty;
+            if (name.IndexOf("light", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                return 1f;
+            if (name.IndexOf("dark", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                return 0f;
+
+            return color.r * 0.2126f + color.g * 0.7152f + color.b * 0.0722f;
         }
 
         private static Material CreateMaterialInstance(Material source)
