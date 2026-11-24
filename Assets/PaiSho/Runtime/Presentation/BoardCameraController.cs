@@ -107,14 +107,24 @@ namespace PaiSho
             float padding)
         {
             float aspect = Screen.height > 0 ? (float)Screen.width / Screen.height : 1.6f;
-            defaultPitch = aspect >= 1.2f ? 48f : aspect >= 1.05f ? 52f : 58f;
+            // Opening shot: host (south) toward the bottom of frame, moderate pitch.
+            // Prior 48–58° + WebGL yaw -90 framed the board sideways after Resources Y=90.
+            defaultPitch = aspect >= 1.2f ? 38f : aspect >= 1.05f ? 44f : 50f;
             pitch = defaultPitch;
-            defaultYaw = yaw;
+            defaultYaw = 0f;
+            yaw = 0f;
 
             Vector3 focus = contentBounds.center;
-            Vector3 boardForward = layout != null ? layout.Origin.forward : Vector3.forward;
-            focus += boardForward * (contentBounds.extents.z * 0.18f);
-            focus.y = contentBounds.min.y + contentBounds.size.y * 0.42f;
+            // Bias toward host / south so spring trays and opening flowers stay on-screen.
+            Vector3 towardHost = layout != null
+                ? (layout.CoordinateToWorld(BoardUtils.SouthGate) - layout.CoordinateToWorld(BoardUtils.MiddleGate))
+                : Vector3.back;
+            towardHost.y = 0f;
+            if (towardHost.sqrMagnitude < 0.0001f)
+                towardHost = Vector3.back;
+            towardHost.Normalize();
+            focus += towardHost * (contentBounds.extents.magnitude * 0.12f);
+            focus.y = contentBounds.min.y + contentBounds.size.y * 0.35f;
 
             defaultFocusPoint = focus;
             targetFocusPoint = focus;
