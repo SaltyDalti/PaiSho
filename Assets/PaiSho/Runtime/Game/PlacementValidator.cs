@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using PaiSho.Board;
+using PaiSho.Domain;
 using PaiSho.Pieces;
 
 namespace PaiSho.Game
@@ -60,13 +61,12 @@ namespace PaiSho.Game
 
         private bool CanPlaceDuringSpring(Player player, PieceType type, int coordinate)
         {
-            if (!PieceRules.IsBasicFlower(type))
-                return false;
-
-            if (!IsOnOwnSide(coordinate, player))
-                return false;
-
-            return PieceRules.IsValidSpringFlowerGarden(type, coordinate);
+            // Domain SoT: any basic flower, own side, GardenRules color (live mid=180).
+            Seat seat = player == Player.Host ? Seat.Host : Seat.Opponent;
+            PlacementResult result = PlacementRules.Evaluate(
+                new PlacementIntent(MatchPhase.Spring, seat, type, coordinate, hasReserveAvailable: true),
+                c => BoardManager.Instance != null && BoardManager.Instance.GetPieceAt(c) != null);
+            return result.IsAllowed;
         }
 
         private bool CanPlaceFlowerDuringPlay(Player player, PieceType type, int coordinate)
@@ -102,16 +102,14 @@ namespace PaiSho.Game
 
         public bool IsOnOwnSide(int coordinate, Player player)
         {
-            return player == Player.Host
-                ? BoardUtils.IsHostSide(coordinate)
-                : BoardUtils.IsOpponentSide(coordinate);
+            Seat seat = player == Player.Host ? Seat.Host : Seat.Opponent;
+            return PlacementRules.IsOnOwnSide(coordinate, seat);
         }
 
         public bool IsOnOpponentSide(int coordinate, Player player)
         {
-            return player == Player.Host
-                ? BoardUtils.IsOpponentSide(coordinate)
-                : BoardUtils.IsHostSide(coordinate);
+            Seat seat = player == Player.Host ? Seat.Host : Seat.Opponent;
+            return PlacementRules.IsOnOpponentSide(coordinate, seat);
         }
 
         public bool CanMoveTo(Piece piece, int coordinate)
@@ -242,23 +240,27 @@ namespace PaiSho.Game
 
         private string ExplainSpringPlacementFailure(Player player, PieceType type, int coordinate)
         {
-            if (!PieceRules.IsBasicFlower(type))
-                return "During spring you can only place basic flowers.";
+            Seat seat = player == Player.Host ? Seat.Host : Seat.Opponent;
+            PlacementResult result = PlacementRules.Evaluate(
+                new PlacementIntent(MatchPhase.Spring, seat, type, coordinate, hasReserveAvailable: true),
+                c => BoardManager.Instance != null && BoardManager.Instance.GetPieceAt(c) != null);
 
-            if (!IsOnOwnSide(coordinate, player))
-                return "During spring, place flowers on your side of the board.";
-
-            if (BoardUtils.IsPort(coordinate))
-                return "Spring flowers can't be placed on a port.";
-
-            // Basic Pai Sho: White Gardens = light, Red Gardens = dark; mixed borders allow either.
-            if (PieceRules.IsWhiteFlower(type) && BoardUtils.IsRedOnlyGarden(coordinate))
-                return "White flowers can't be placed in a Red Garden.";
-
-            if (PieceRules.IsRedFlower(type) && BoardUtils.IsWhiteOnlyGarden(coordinate))
-                return "Red flowers can't be placed in a White Garden.";
-
-            return "That flower can't be placed there during spring.";
+            return result.Reason switch
+            {
+                PlacementDenyReason.WrongOpeningFlower =>
+                    "During spring you can only place basic flowers.",
+                PlacementDenyReason.WrongSide =>
+                    "During spring, place flowers on your side of the board.",
+                PlacementDenyReason.WrongGarden when BoardUtils.IsPort(coordinate) =>
+                    "Spring flowers can't be placed on a port.",
+                PlacementDenyReason.WrongGarden when PlacementRules.IsWhiteFlower(type) =>
+                    "White flowers can't be placed in a Red Garden.",
+                PlacementDenyReason.WrongGarden when PlacementRules.IsRedFlower(type) =>
+                    "Red flowers can't be placed in a White Garden.",
+                PlacementDenyReason.Occupied => "That space is already occupied.",
+                PlacementDenyReason.InvalidCoordinate => "That point isn't on the board.",
+                _ => "That flower can't be placed there during spring."
+            };
         }
 
         private static string ExplainFlowerPlacementFailure(Player player, PieceType type, int coordinate)

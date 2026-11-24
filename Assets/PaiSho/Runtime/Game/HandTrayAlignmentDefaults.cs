@@ -22,10 +22,12 @@ namespace PaiSho.Game
         public static readonly Vector3 StandExtraOffset = Vector3.zero;
 
         /// <summary>
-        /// WebGL Resources board + FineAlign: push stands further past the gate onto the outer
-        /// rim (0.1.19 sat too close to center / clipped the garden wood).
+        /// WebGL Resources-fallback stand distance past the home gate.
+        /// 0.1.19–0.1.32 used 6.1 to clear a Y=90 / scale-to-GridSpan Resources board; with
+        /// authored 0.5 / yaw 0 seating (#44) that overshoots the rim. Match desktop F9 south
+        /// cells so crescents sit like the 0.1.21/0.1.29 era relative to the correct board.
         /// </summary>
-        public const float WebGlStandSouthCells = 6.1f;
+        public const float WebGlStandSouthCells = StandSouthCells;
         /// <summary>
         /// Extra world Y after Align seats mesh bottom on TileHeight — board rim sits above the
         /// garden surface; without this the crescent sinks into the rim (HJ-43).

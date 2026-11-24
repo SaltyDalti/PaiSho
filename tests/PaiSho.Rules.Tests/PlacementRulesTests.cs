@@ -38,12 +38,62 @@ namespace PaiSho.Rules.Tests
         }
 
         [Fact]
-        public void Spring_RejectsWrongOpeningFlower()
+        public void Spring_AllowsHostLilyOnOwnSideNeutral()
+        {
+            // Domain stride-20 host-side point (not in live garden sets → Neutral dual-legal).
+            int coord = BoardCoords.ToCoordinate(0, -3);
+            var result = Eval(MatchPhase.Spring, Seat.Host, PieceType.Lily, coord, hasReserve: false);
+            Assert.True(result.IsAllowed);
+            Assert.Equal(PlacementDenyReason.None, result.Reason);
+        }
+
+        [Fact]
+        public void Spring_AllowsHostLilyOnLiveLightGarden()
+        {
+            // Live mid=180 SW light-only (GardenRules) — Host own side.
+            const int coord = 46;
+            Assert.Equal(GardenZone.Light, GardenRules.Classify(coord));
+            var result = Eval(MatchPhase.Spring, Seat.Host, PieceType.Lily, coord, hasReserve: false);
+            Assert.True(result.IsAllowed);
+        }
+
+        [Fact]
+        public void Spring_RejectsHostLilyOnLiveRedOnlyGarden()
+        {
+            // Live SE dark-only — Host own side but white flowers forbidden.
+            const int coord = 48;
+            Assert.Equal(GardenZone.Dark, GardenRules.Classify(coord));
+            Assert.True(PlacementRules.IsOnOwnSide(coord, Seat.Host));
+            var result = Eval(MatchPhase.Spring, Seat.Host, PieceType.Lily, coord, hasReserve: true);
+            Assert.False(result.IsAllowed);
+            Assert.Equal(PlacementDenyReason.WrongGarden, result.Reason);
+        }
+
+        [Fact]
+        public void Spring_RejectsHostLilyOnOpponentSide()
+        {
+            int coord = BoardCoords.ToCoordinate(0, 5);
+            var result = Eval(MatchPhase.Spring, Seat.Host, PieceType.Lily, coord, hasReserve: true);
+            Assert.False(result.IsAllowed);
+            Assert.Equal(PlacementDenyReason.WrongSide, result.Reason);
+        }
+
+        [Fact]
+        public void Spring_RejectsNonBasicFlower()
         {
             int coord = BoardCoords.ToCoordinate(0, -3);
-            var result = Eval(MatchPhase.Spring, Seat.Host, PieceType.Rose, coord, hasReserve: true);
+            var result = Eval(MatchPhase.Spring, Seat.Host, PieceType.Boat, coord, hasReserve: true);
             Assert.False(result.IsAllowed);
             Assert.Equal(PlacementDenyReason.WrongOpeningFlower, result.Reason);
+        }
+
+        [Fact]
+        public void Spring_AllowsHostRoseOnOwnSideWhenDrawn()
+        {
+            // Live product draws any basic flower — Rose is legal on Host side Neutral/dark/mixed.
+            int coord = BoardCoords.ToCoordinate(0, -3);
+            var result = Eval(MatchPhase.Spring, Seat.Host, PieceType.Rose, coord, hasReserve: true);
+            Assert.True(result.IsAllowed);
         }
 
         [Fact]
@@ -98,6 +148,14 @@ namespace PaiSho.Rules.Tests
         {
             int coord = BoardCoords.ToCoordinate(x, z);
             Assert.Equal(expected, PlacementRules.IsOnOpponentSide(coord, seat));
+        }
+
+        [Fact]
+        public void OwnSide_RejectsCenterLine()
+        {
+            int coord = BoardCoords.ToCoordinate(0, 0);
+            Assert.False(PlacementRules.IsOnOwnSide(coord, Seat.Host));
+            Assert.False(PlacementRules.IsOnOwnSide(coord, Seat.Opponent));
         }
 
         [Fact]
