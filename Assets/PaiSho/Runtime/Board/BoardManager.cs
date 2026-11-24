@@ -437,6 +437,15 @@ namespace PaiSho.Board
                 WoodTheme.PreloadVisualMaterials(hostPlayerStand.gameObject);
                 if (!preserveSceneAuthored)
                     WoodTheme.RefreshPrebuiltStandVisuals(hostPlayerStand.gameObject);
+#if UNITY_WEBGL && !UNITY_EDITOR
+                else
+                {
+                    // WebGlBootDefer disables scene stand renderers at AfterSceneLoad.
+                    // Preserve/prebuilt (#44) used to skip RefreshPrebuiltStandVisuals, so
+                    // crescents stayed invisible while board points looked correct (0.1.32).
+                    WoodTheme.EnsurePlayerStandVisible(hostPlayerStand.gameObject);
+                }
+#endif
             }
 
             if (opponentPlayerStand != null)
@@ -444,6 +453,10 @@ namespace PaiSho.Board
                 WoodTheme.PreloadVisualMaterials(opponentPlayerStand.gameObject);
                 if (!preserveSceneAuthored)
                     WoodTheme.RefreshPrebuiltStandVisuals(opponentPlayerStand.gameObject);
+#if UNITY_WEBGL && !UNITY_EDITOR
+                else
+                    WoodTheme.EnsurePlayerStandVisible(opponentPlayerStand.gameObject);
+#endif
             }
 
             return true;
