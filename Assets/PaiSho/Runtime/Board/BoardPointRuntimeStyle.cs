@@ -15,12 +15,12 @@ namespace PaiSho.Board
 
         private static BoardPointTunerSettings CreateGameplay()
         {
-            // Visibility-first (HJ-53 / 0.1.25): Resources Board.glb has no BoardLines, so these
-            // discs are the only grid. F8 export 2026-11-23 uses diameter≈0.089; gameplay keeps a
-            // larger cyan disc so Dalton can verify points. showMarkers must stay true.
+            // Product default: markers hidden in normal play (colliders stay active). F8
+            // BoardPointTuner can still force Show markers for alignment. Size/color retained
+            // for that debug path; pitch/spacing live in BoardAlignmentDefaults only.
             var s = new BoardPointTunerSettings
             {
-                showMarkers = true,
+                showMarkers = false,
                 showLabels = false,
                 colorByGarden = false,
                 markerDiameterScale = 0.32f,

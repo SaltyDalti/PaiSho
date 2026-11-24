@@ -62,8 +62,9 @@ namespace PaiSho.Board
             settings.markerHeightOffset = MarkerHeightOffset;
             settings.markerAlpha = MarkerAlpha;
             settings.markerColor = MarkerColor;
-            settings.showMarkers = true;
-            settings.showLabels = true;
+            // Off by default; F8 OpenPanel forces showMarkers/labels on for the tuning session.
+            settings.showMarkers = false;
+            settings.showLabels = false;
             settings.colorByGarden = true;
             settings.SyncMarkerColorAlpha();
         }

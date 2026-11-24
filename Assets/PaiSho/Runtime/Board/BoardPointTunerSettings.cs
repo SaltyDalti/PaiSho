@@ -17,8 +17,8 @@ namespace PaiSho.Board
     [Serializable]
     public class BoardPointTunerSettings
     {
-        public bool showMarkers = true;
-        public bool showLabels = true;
+        public bool showMarkers = false;
+        public bool showLabels = false;
         public bool colorByGarden = true;
         public float markerDiameterScale = 0.08900000154972077f;
         public float markerHeightOffset = 0.08588030189275742f;
