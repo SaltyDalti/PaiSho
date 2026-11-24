@@ -823,7 +823,7 @@ namespace PaiSho.Board
                     // Calibrate → FineAlign → remeasure → FineAlign again so CoordinateToWorld
                     // stays locked to GateForeign/GateHome after the final CellSpacing write.
                     // HJ-26: FineAlign + material tweaks run on WebGL again (tray seating +
-                    // GardenLight/Dark swap). EnsureMaterials stays skipped for Safari.
+                    // neutral garden tiling). EnsureMaterials stays skipped for Safari.
                     WoodTheme.FineAlignBoardModel(placedModel.gameObject, boardLayout);
                     if (WoodTheme.TryMeasureNineteenByNineteenGridSpan(placedModel.gameObject, out float span))
                     {
@@ -837,7 +837,7 @@ namespace PaiSho.Board
 
                     WoodTheme.HideSquareBoardBaseAndEmbeddedStand(placedModel.gameObject);
                     // CreateModelBoardSurface already tweaked materials; re-apply after align so
-                    // neutral tiling / lighten / Light↔Dark swap always win on Resources path.
+                    // neutral tiling / lighten always win on Resources path (Light/Dark authored).
                     WoodTheme.EnsureBoardModelMaterialTweaks(boardLayout, placedModel.gameObject);
                     WoodTheme.LogGateLayoutAlignment(boardLayout, placedModel.gameObject);
                     DebugLogger.Log(
@@ -1062,6 +1062,7 @@ namespace PaiSho.Board
             SeatPieceOnBoard(piece, coordinate, immediateVisual: !preserveWorldPose);
 
             piecesOnBoard[coordinate] = piece;
+            RefreshGameplayBoardPoints();
             RefreshHarmonyForPiece(piece);
             CaptureManager.Instance?.TryCapture(piece, coordinate);
             BloomingManager.Instance?.ApplyBloomVisualIfLotus(piece);
@@ -1127,6 +1128,7 @@ namespace PaiSho.Board
             piecesOnBoard[coordinate] = piece;
             piece.SetCoordinate(coordinate);
             SeatPieceOnBoard(piece, coordinate);
+            RefreshGameplayBoardPoints();
         }
 
         public bool MovePiece(Piece piece, int toCoordinate)
@@ -1147,6 +1149,7 @@ namespace PaiSho.Board
             piece.SetCoordinate(toCoordinate);
             SeatPieceOnBoard(piece, toCoordinate);
 
+            RefreshGameplayBoardPoints();
             RefreshHarmonyForPiece(piece);
             return true;
         }
@@ -1361,6 +1364,7 @@ namespace PaiSho.Board
                 piecesOnBoard.Remove(coordinate);
 
             piece.SetCoordinate(-1);
+            RefreshGameplayBoardPoints();
         }
 
         public void ClearAllPieces()
