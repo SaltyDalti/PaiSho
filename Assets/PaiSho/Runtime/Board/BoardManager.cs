@@ -792,15 +792,12 @@ namespace PaiSho.Board
 
             if (boardLayout.UseModelBoard && BoardVisualLoader.TryLoadModel(out GameObject boardModel, out string boardSource))
             {
-                // Desktop-tuned knobs first; gate pitch then locks CellSpacing to this GLB.
+                // Same Board.glb + #37 F8 SoT on Editor and WebGL. GamePlay BoardModelSurface is
+                // empty, so both platforms seat via CreateModelBoardSurface; WebGL must not strip
+                // GridSpacingScale/SpacingFineTune (forcing 1/1 made live points diverge from the
+                // Editor Play seating Dalton signed off on).
                 BoardAlignmentDefaults.ApplyTo(boardLayout);
 #if UNITY_WEBGL && !UNITY_EDITOR
-                // Gate pitch is measured from Gate* inner faces (garden-side), not AABB centers
-                // (HJ-51). Keep scale/fineTune at 1 so CellSpacing matches that mesh pitch 1:1.
-                // Desktop F8 2026-11-23 is already near 1 (≈1.0067 / 1.0010); WebGL stays exact 1.
-                boardLayout.SetGridSpacingScale(1f);
-                boardLayout.SetSpacingFineTune(1f);
-                boardLayout.SetGridOffset(Vector2.zero);
                 // Board.glb is instanced at Y=90 so GardenLight* sit on BoardUtils SW+NE (white)
                 // wedges. Keep grid yaw 0 so light/dark coords land on those wedges — yaw -90
                 // aligned GateForeign/Home but swapped garden colors and sideways opening camera.
@@ -821,28 +818,9 @@ namespace PaiSho.Board
                 Transform placedModel = FindBoardModel(gridRoot);
                 if (placedModel != null)
                 {
-#if UNITY_WEBGL && !UNITY_EDITOR
-                    // Mesh-driven pitch (local mesh bounds × lossyScale), not the scene
-                    // GridSpan closed loop. CreateModelBoardSurface may have scaled toward
-                    // serialized cellSpacing; this locks CellSpacing to live gate/garden pitch
-                    // and FineAligns. GS/FT stay 1 — measure correctness over Desktop F8 fudge.
-                    if (!WoodTheme.CalibrateLayoutToBoardModelPitch(
-                            boardLayout, placedModel.gameObject))
-                    {
-                        WoodTheme.FineAlignBoardModel(placedModel.gameObject, boardLayout);
-                        if (WoodTheme.TryMeasureNineteenByNineteenGridSpan(
-                                placedModel.gameObject, boardLayout, out float span))
-                        {
-                            boardLayout.RememberCalibratedGridSpan(span);
-                            boardLayout.CalibrateFromBoardGridSpan(span);
-                            WoodTheme.FineAlignBoardModel(placedModel.gameObject, boardLayout);
-                        }
-                    }
-#else
                     // Calibrate → FineAlign → remeasure → FineAlign again so CoordinateToWorld
-                    // stays locked to GateForeign/GateHome after the final CellSpacing write.
-                    // HJ-26: FineAlign + material tweaks run on WebGL again (tray seating +
-                    // neutral garden tiling). EnsureMaterials stays skipped for Safari.
+                    // stays locked to gate inner faces after the final CellSpacing write.
+                    // Same loop on WebGL as Editor (HJ-26 FineAlign; EnsureMaterials still skipped).
                     WoodTheme.FineAlignBoardModel(placedModel.gameObject, boardLayout);
                     if (WoodTheme.TryMeasureNineteenByNineteenGridSpan(
                             placedModel.gameObject, boardLayout, out float span))
@@ -851,7 +829,6 @@ namespace PaiSho.Board
                         boardLayout.CalibrateFromBoardGridSpan(span);
                         WoodTheme.FineAlignBoardModel(placedModel.gameObject, boardLayout);
                     }
-#endif
                     if (WoodTheme.TryGetBoardSurfaceY(
                             placedModel.gameObject, boardLayout.Origin, out float alignedSurfaceY))
                         boardLayout.SetBoardSurfaceHeight(alignedSurfaceY);
