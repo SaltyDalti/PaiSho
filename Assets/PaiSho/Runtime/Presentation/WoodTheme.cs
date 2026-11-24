@@ -2482,51 +2482,27 @@ namespace PaiSho
         }
 
         /// <summary>
-        /// WebGL / Resources: set CellSpacing from live mesh pitch (gate inner or garden
-        /// diamond), FineAlign, then rescale if mesh pitch and layout spacing still disagree.
+        /// Resources path: measure live gate/garden pitch, apply current layout GS/FT
+        /// (BoardAlignmentDefaults / #37 SoT — do not force 1/1), FineAlign. No mesh rescale;
+        /// translate-only align matches Editor Play seating on the same Board.glb.
         /// </summary>
         public static bool CalibrateLayoutToBoardModelPitch(BoardLayout layout, GameObject boardModel)
         {
             if (layout == null || boardModel == null)
                 return false;
 
-            if (!TryMeasureGatePitch(boardModel, layout, out float pitch) &&
-                !TryMeasureGardenDiamondPitch(boardModel, out pitch))
+            if (!TryMeasureNineteenByNineteenGridSpan(boardModel, layout, out float span))
                 return false;
 
-            float span = pitch * BoardUtils.GridIntervals;
-            layout.SetGridSpacingScale(1f);
-            layout.SetSpacingFineTune(1f);
-            layout.SetGridOffset(Vector2.zero);
             layout.RememberCalibratedGridSpan(span);
             layout.CalibrateFromBoardGridSpan(span);
-
             FineAlignBoardModel(boardModel, layout);
 
-            if (!TryMeasureGatePitch(boardModel, layout, out float pitchAfter) &&
-                !TryMeasureGardenDiamondPitch(boardModel, out pitchAfter))
-                return true;
-
-            float expectedGateDistance =
-                (BoardUtils.GetRow(BoardUtils.NorthGate) - BoardUtils.GetRow(BoardUtils.SouthGate))
-                * layout.CellSpacing
-                * layout.SpacingFineTune;
-            float actualGateDistance = pitchAfter *
-                (BoardUtils.GetRow(BoardUtils.NorthGate) - BoardUtils.GetRow(BoardUtils.SouthGate));
-            if (actualGateDistance > 0.001f &&
-                Mathf.Abs(actualGateDistance - expectedGateDistance) > layout.CellSpacing * 0.01f)
+            if (TryMeasureNineteenByNineteenGridSpan(boardModel, layout, out float spanAfter))
             {
-                boardModel.transform.localScale *= expectedGateDistance / actualGateDistance;
+                layout.RememberCalibratedGridSpan(spanAfter);
+                layout.CalibrateFromBoardGridSpan(spanAfter);
                 FineAlignBoardModel(boardModel, layout);
-
-                if (TryMeasureGatePitch(boardModel, layout, out float pitchFinal) ||
-                    TryMeasureGardenDiamondPitch(boardModel, out pitchFinal))
-                {
-                    float finalSpan = pitchFinal * BoardUtils.GridIntervals;
-                    layout.RememberCalibratedGridSpan(finalSpan);
-                    layout.CalibrateFromBoardGridSpan(finalSpan);
-                    FineAlignBoardModel(boardModel, layout);
-                }
             }
 
             return true;
