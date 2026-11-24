@@ -1652,19 +1652,30 @@ namespace PaiSho
             if (TryMeasureNineteenByNineteenGridSpan(instance, layout, out float unitSpan19))
             {
                 scale = targetSpan / unitSpan19;
-                alignedGridSpan = unitSpan19 * scale;
             }
             else if (TryMeasurePlayableGridSpan(instance, out float unitSpan) && unitSpan > 0.001f)
             {
                 scale = targetSpan / unitSpan;
-                alignedGridSpan = unitSpan * scale;
+            }
+
+            instance.transform.localScale = Vector3.one * scale;
+
+            // Remeasure in world after scale. Do not assume unitSpan*scale — on WebGL,
+            // renderer.bounds can lag, and returning the scene GridSpan closed-loop left
+            // CellSpacing on the serialized default while the mesh pitched differently.
+            if (TryMeasureNineteenByNineteenGridSpan(instance, layout, out float worldSpan19) &&
+                worldSpan19 > 0.001f)
+            {
+                alignedGridSpan = worldSpan19;
+            }
+            else if (TryMeasurePlayableGridSpan(instance, out float worldSpan) && worldSpan > 0.001f)
+            {
+                alignedGridSpan = worldSpan;
             }
             else
             {
                 alignedGridSpan = targetSpan;
             }
-
-            instance.transform.localScale = Vector3.one * scale;
 
             AlignBoardModelToFloor(instance, layout, recenterXZ: true);
             boardSurfaceY = TryGetBoardSurfaceY(instance, layout.Origin, out float topY) ? topY : layout.TileHeight;
@@ -1745,7 +1756,8 @@ namespace PaiSho
             float epsilon = Mathf.Max(0.0001f, layout.CellSpacing * Mathf.Clamp(epsilonFraction, 0.005f, 0.1f));
             Vector3 southTarget = layout.CoordinateToWorld(BoardUtils.SouthGate);
             Vector3 northTarget = layout.CoordinateToWorld(BoardUtils.NorthGate);
-            GetGatePairLayoutPoints(southGate.bounds, northGate.bounds, out Vector3 southActual, out Vector3 northActual);
+            if (!TryGetGatePairLayoutPointsWorld(southGate, northGate, out Vector3 southActual, out Vector3 northActual))
+                GetGatePairLayoutPoints(southGate.bounds, northGate.bounds, out southActual, out northActual);
 
             float southErr = Vector2.Distance(
                 new Vector2(southTarget.x, southTarget.z),
@@ -2247,7 +2259,9 @@ namespace PaiSho
                 if (!TryGetRendererByName(boardModel, gateName, out Renderer renderer))
                     continue;
 
-                Vector3 center = renderer.bounds.center;
+                Vector3 center = TryGetRendererWorldBoundsFromMesh(renderer, out Bounds meshBounds)
+                    ? meshBounds.center
+                    : renderer.bounds.center;
                 float southDist = Vector2.Distance(
                     new Vector2(center.x, center.z),
                     new Vector2(southTarget.x, southTarget.z));
@@ -2290,11 +2304,57 @@ namespace PaiSho
             if (rowDelta <= 0)
                 return false;
 
-            // Inner faces (toward board mid), not AABB centers — centers sit mid-wedge and
-            // overestimate pitch vs carved garden seams / Desktop F8 (~0.895 of center pitch).
-            GetGatePairLayoutPoints(southGate.bounds, northGate.bounds, out Vector3 south, out Vector3 north);
+            // Prefer local mesh bounds → world (lossyScale), not renderer.bounds: on WebGL,
+            // world AABBs can lag a frame after CreateModelBoardSurface scales the instance,
+            // which left CellSpacing on the scene default while the mesh pitched differently.
+            if (!TryGetGatePairLayoutPointsWorld(southGate, northGate, out Vector3 south, out Vector3 north))
+            {
+                GetGatePairLayoutPoints(southGate.bounds, northGate.bounds, out south, out north);
+            }
+
             float distance = Vector2.Distance(new Vector2(south.x, south.z), new Vector2(north.x, north.z));
             pitch = distance / rowDelta;
+            return pitch > 0.001f;
+        }
+
+        /// <summary>
+        /// Colored-garden axis extent / 8 — same carved diamond edge as gate inner faces on
+        /// Board.glb (~7.636). Uses max |x|/|z| of the AABB (not Euclidean corner radius —
+        /// quadrant AABB corners sit at ~7.636√2 and would overstate pitch). Fallback when
+        /// Gate* measure is unavailable.
+        /// </summary>
+        public static bool TryMeasureGardenDiamondPitch(GameObject boardModel, out float pitch)
+        {
+            pitch = 0f;
+            if (boardModel == null)
+                return false;
+
+            float originX = boardModel.transform.position.x;
+            float originZ = boardModel.transform.position.z;
+            float maxAxis = 0f;
+            foreach (Renderer renderer in boardModel.GetComponentsInChildren<Renderer>(true))
+            {
+                if (renderer == null)
+                    continue;
+                if (!IsGardenLightRenderer(renderer) && !IsGardenDarkRenderer(renderer))
+                    continue;
+
+                if (!TryGetRendererWorldBoundsFromMesh(renderer, out Bounds worldBounds))
+                    worldBounds = renderer.bounds;
+
+                maxAxis = Mathf.Max(
+                    maxAxis,
+                    Mathf.Abs(worldBounds.min.x - originX),
+                    Mathf.Abs(worldBounds.max.x - originX),
+                    Mathf.Abs(worldBounds.min.z - originZ),
+                    Mathf.Abs(worldBounds.max.z - originZ));
+            }
+
+            if (maxAxis < 0.001f)
+                return false;
+
+            // Garden diamond edge sits 8 cells from mid (SouthGate row delta from center).
+            pitch = maxAxis / 8f;
             return pitch > 0.001f;
         }
 
@@ -2314,12 +2374,162 @@ namespace PaiSho
             northPoint = ClosestPointOnBoundsXZ(northGateBounds, mid);
         }
 
+        private static bool TryGetGatePairLayoutPointsWorld(
+            Renderer southGate,
+            Renderer northGate,
+            out Vector3 southPoint,
+            out Vector3 northPoint)
+        {
+            southPoint = default;
+            northPoint = default;
+            // Local-space closest point → world: survives parent Y=90 + uniform scale without
+            // waiting for renderer.bounds, and avoids inflated world AABBs on rotated wedges.
+            if (!TryGetGateLayoutPointFromLocalMesh(southGate, northGate, out southPoint) ||
+                !TryGetGateLayoutPointFromLocalMesh(northGate, southGate, out northPoint))
+            {
+                if (!TryGetRendererWorldBoundsFromMesh(southGate, out Bounds southBounds) ||
+                    !TryGetRendererWorldBoundsFromMesh(northGate, out Bounds northBounds))
+                    return false;
+
+                GetGatePairLayoutPoints(southBounds, northBounds, out southPoint, out northPoint);
+            }
+
+            return true;
+        }
+
+        private static bool TryGetGateLayoutPointFromLocalMesh(
+            Renderer gate,
+            Renderer oppositeGate,
+            out Vector3 worldPoint)
+        {
+            worldPoint = default;
+            if (gate == null || !TryGetRendererLocalBounds(gate, out Bounds localBounds))
+                return false;
+
+            Vector3 toward = oppositeGate != null
+                ? oppositeGate.transform.position
+                : gate.transform.position - gate.transform.forward;
+            Vector3 localToward = gate.transform.InverseTransformPoint(toward);
+            Vector3 localPoint = new Vector3(
+                Mathf.Clamp(localToward.x, localBounds.min.x, localBounds.max.x),
+                localBounds.center.y,
+                Mathf.Clamp(localToward.z, localBounds.min.z, localBounds.max.z));
+            worldPoint = gate.transform.TransformPoint(localPoint);
+            return true;
+        }
+
+        private static bool TryGetRendererLocalBounds(Renderer renderer, out Bounds localBounds)
+        {
+            localBounds = default;
+            if (renderer == null)
+                return false;
+
+            var meshFilter = renderer.GetComponent<MeshFilter>();
+            if (meshFilter != null && meshFilter.sharedMesh != null)
+            {
+                localBounds = meshFilter.sharedMesh.bounds;
+                return true;
+            }
+
+            localBounds = renderer.localBounds;
+            return localBounds.size.sqrMagnitude > 1e-8f;
+        }
+
+        private static bool TryGetRendererWorldBoundsFromMesh(Renderer renderer, out Bounds worldBounds)
+        {
+            worldBounds = default;
+            if (!TryGetRendererLocalBounds(renderer, out Bounds localBounds))
+                return false;
+
+            Transform t = renderer.transform;
+            bool first = true;
+            Vector3 min = default;
+            Vector3 max = default;
+            Vector3 center = localBounds.center;
+            Vector3 extents = localBounds.extents;
+            for (int x = -1; x <= 1; x += 2)
+            {
+                for (int y = -1; y <= 1; y += 2)
+                {
+                    for (int z = -1; z <= 1; z += 2)
+                    {
+                        Vector3 world = t.TransformPoint(
+                            center + Vector3.Scale(extents, new Vector3(x, y, z)));
+                        if (first)
+                        {
+                            min = max = world;
+                            first = false;
+                        }
+                        else
+                        {
+                            min = Vector3.Min(min, world);
+                            max = Vector3.Max(max, world);
+                        }
+                    }
+                }
+            }
+
+            worldBounds = new Bounds((min + max) * 0.5f, max - min);
+            return true;
+        }
+
         private static Vector3 ClosestPointOnBoundsXZ(Bounds bounds, Vector3 point)
         {
             return new Vector3(
                 Mathf.Clamp(point.x, bounds.min.x, bounds.max.x),
                 bounds.center.y,
                 Mathf.Clamp(point.z, bounds.min.z, bounds.max.z));
+        }
+
+        /// <summary>
+        /// WebGL / Resources: set CellSpacing from live mesh pitch (gate inner or garden
+        /// diamond), FineAlign, then rescale if mesh pitch and layout spacing still disagree.
+        /// </summary>
+        public static bool CalibrateLayoutToBoardModelPitch(BoardLayout layout, GameObject boardModel)
+        {
+            if (layout == null || boardModel == null)
+                return false;
+
+            if (!TryMeasureGatePitch(boardModel, layout, out float pitch) &&
+                !TryMeasureGardenDiamondPitch(boardModel, out pitch))
+                return false;
+
+            float span = pitch * BoardUtils.GridIntervals;
+            layout.SetGridSpacingScale(1f);
+            layout.SetSpacingFineTune(1f);
+            layout.SetGridOffset(Vector2.zero);
+            layout.RememberCalibratedGridSpan(span);
+            layout.CalibrateFromBoardGridSpan(span);
+
+            FineAlignBoardModel(boardModel, layout);
+
+            if (!TryMeasureGatePitch(boardModel, layout, out float pitchAfter) &&
+                !TryMeasureGardenDiamondPitch(boardModel, out pitchAfter))
+                return true;
+
+            float expectedGateDistance =
+                (BoardUtils.GetRow(BoardUtils.NorthGate) - BoardUtils.GetRow(BoardUtils.SouthGate))
+                * layout.CellSpacing
+                * layout.SpacingFineTune;
+            float actualGateDistance = pitchAfter *
+                (BoardUtils.GetRow(BoardUtils.NorthGate) - BoardUtils.GetRow(BoardUtils.SouthGate));
+            if (actualGateDistance > 0.001f &&
+                Mathf.Abs(actualGateDistance - expectedGateDistance) > layout.CellSpacing * 0.01f)
+            {
+                boardModel.transform.localScale *= expectedGateDistance / actualGateDistance;
+                FineAlignBoardModel(boardModel, layout);
+
+                if (TryMeasureGatePitch(boardModel, layout, out float pitchFinal) ||
+                    TryMeasureGardenDiamondPitch(boardModel, out pitchFinal))
+                {
+                    float finalSpan = pitchFinal * BoardUtils.GridIntervals;
+                    layout.RememberCalibratedGridSpan(finalSpan);
+                    layout.CalibrateFromBoardGridSpan(finalSpan);
+                    FineAlignBoardModel(boardModel, layout);
+                }
+            }
+
+            return true;
         }
 
         private static void AlignGridCenterToMiddleGate(GameObject boardModel, BoardLayout layout)
@@ -2364,7 +2574,8 @@ namespace PaiSho
 
             Vector3 southTarget = layout.CoordinateToWorld(southGateCoordinate);
             Vector3 northTarget = layout.CoordinateToWorld(northGateCoordinate);
-            GetGatePairLayoutPoints(southGate.bounds, northGate.bounds, out Vector3 southActual, out Vector3 northActual);
+            if (!TryGetGatePairLayoutPointsWorld(southGate, northGate, out Vector3 southActual, out Vector3 northActual))
+                GetGatePairLayoutPoints(southGate.bounds, northGate.bounds, out southActual, out northActual);
 
             Vector3 delta = new Vector3(
                 (southTarget.x - southActual.x + northTarget.x - northActual.x) * 0.5f,
@@ -2481,6 +2692,13 @@ namespace PaiSho
         {
             span = 0f;
             if (TryMeasureGatePitch(boardModel, layout, out float pitch))
+            {
+                span = pitch * BoardUtils.GridIntervals;
+                return span > 0.001f;
+            }
+
+            // Board.glb has no BoardLines — colored garden diamond edge matches gate inners.
+            if (TryMeasureGardenDiamondPitch(boardModel, out pitch))
             {
                 span = pitch * BoardUtils.GridIntervals;
                 return span > 0.001f;

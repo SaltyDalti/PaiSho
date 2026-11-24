@@ -821,6 +821,24 @@ namespace PaiSho.Board
                 Transform placedModel = FindBoardModel(gridRoot);
                 if (placedModel != null)
                 {
+#if UNITY_WEBGL && !UNITY_EDITOR
+                    // Mesh-driven pitch (local mesh bounds × lossyScale), not the scene
+                    // GridSpan closed loop. CreateModelBoardSurface may have scaled toward
+                    // serialized cellSpacing; this locks CellSpacing to live gate/garden pitch
+                    // and FineAligns. GS/FT stay 1 — measure correctness over Desktop F8 fudge.
+                    if (!WoodTheme.CalibrateLayoutToBoardModelPitch(
+                            boardLayout, placedModel.gameObject))
+                    {
+                        WoodTheme.FineAlignBoardModel(placedModel.gameObject, boardLayout);
+                        if (WoodTheme.TryMeasureNineteenByNineteenGridSpan(
+                                placedModel.gameObject, boardLayout, out float span))
+                        {
+                            boardLayout.RememberCalibratedGridSpan(span);
+                            boardLayout.CalibrateFromBoardGridSpan(span);
+                            WoodTheme.FineAlignBoardModel(placedModel.gameObject, boardLayout);
+                        }
+                    }
+#else
                     // Calibrate → FineAlign → remeasure → FineAlign again so CoordinateToWorld
                     // stays locked to GateForeign/GateHome after the final CellSpacing write.
                     // HJ-26: FineAlign + material tweaks run on WebGL again (tray seating +
@@ -833,6 +851,7 @@ namespace PaiSho.Board
                         boardLayout.CalibrateFromBoardGridSpan(span);
                         WoodTheme.FineAlignBoardModel(placedModel.gameObject, boardLayout);
                     }
+#endif
                     if (WoodTheme.TryGetBoardSurfaceY(
                             placedModel.gameObject, boardLayout.Origin, out float alignedSurfaceY))
                         boardLayout.SetBoardSurfaceHeight(alignedSurfaceY);
