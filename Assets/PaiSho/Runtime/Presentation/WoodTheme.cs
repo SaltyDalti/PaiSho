@@ -1635,8 +1635,6 @@ namespace PaiSho
             GameObject instance = Object.Instantiate(modelRoot);
             instance.name = "BoardModel";
             instance.transform.SetParent(surfaceRoot.transform, false);
-            instance.transform.SetPositionAndRotation(Vector3.zero, Quaternion.Euler(0f, 90f, 0f));
-            instance.transform.localScale = Vector3.one;
 
             // On WebGL, keep imported glTF/URP materials. EnsureMaterials → ToUrpMaterial
             // walks every Garden* renderer and has blown Safari's invoke_iii stack on the
@@ -1646,6 +1644,38 @@ namespace PaiSho
             PieceMaterialUtility.EnsureMaterials(instance, sourceAssetPath);
 #endif
             StripColliders(instance);
+
+#if UNITY_WEBGL && !UNITY_EDITOR
+            // Match GamePlay authored Board PrefabInstance (scale 0.5, yaw 0). Do not
+            // scale-to-GridSpan or force Y=90 — that path made live points diverge from the
+            // Editor preserve seating Dalton signed off on (HJ-66/HJ-68 still wrong at 0.1.31).
+            instance.transform.SetPositionAndRotation(
+                Vector3.zero,
+                Quaternion.Euler(0f, BoardAlignmentDefaults.AuthoredBoardYawDegrees, 0f));
+            instance.transform.localScale =
+                Vector3.one * BoardAlignmentDefaults.AuthoredBoardLocalScale;
+
+            if (TryMeasureNineteenByNineteenGridSpan(instance, layout, out float authoredSpan) &&
+                authoredSpan > 0.001f)
+            {
+                alignedGridSpan = authoredSpan;
+            }
+            else if (TryMeasurePlayableGridSpan(instance, out float authoredLinesSpan) &&
+                     authoredLinesSpan > 0.001f)
+            {
+                alignedGridSpan = authoredLinesSpan;
+            }
+            else
+            {
+                alignedGridSpan = BoardUtils.GridIntervals
+                    * BoardAlignmentDefaults.AuthoredBoardLocalScale
+                    * BoardAlignmentDefaults.UnitGateInnerPitch;
+            }
+#else
+            // Editor Resources fallback: historical Y=90 + scale-to-GridSpan. Prefer preserve/
+            // prebuilt when GamePlay Board PrefabInstance is present.
+            instance.transform.SetPositionAndRotation(Vector3.zero, Quaternion.Euler(0f, 90f, 0f));
+            instance.transform.localScale = Vector3.one;
 
             float targetSpan = layout.GridSpan;
             float scale = 1f;
@@ -1660,9 +1690,6 @@ namespace PaiSho
 
             instance.transform.localScale = Vector3.one * scale;
 
-            // Remeasure in world after scale. Do not assume unitSpan*scale — on WebGL,
-            // renderer.bounds can lag, and returning the scene GridSpan closed-loop left
-            // CellSpacing on the serialized default while the mesh pitched differently.
             if (TryMeasureNineteenByNineteenGridSpan(instance, layout, out float worldSpan19) &&
                 worldSpan19 > 0.001f)
             {
@@ -1676,6 +1703,7 @@ namespace PaiSho
             {
                 alignedGridSpan = targetSpan;
             }
+#endif
 
             AlignBoardModelToFloor(instance, layout, recenterXZ: true);
             boardSurfaceY = TryGetBoardSurfaceY(instance, layout.Origin, out float topY) ? topY : layout.TileHeight;

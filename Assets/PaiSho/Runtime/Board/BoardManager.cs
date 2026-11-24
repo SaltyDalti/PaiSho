@@ -523,13 +523,20 @@ namespace PaiSho.Board
             if (!HasBoardMarkers(root))
                 return false;
 
-            foreach (Transform child in root.GetComponentsInChildren<Transform>(true))
+            // Require real Garden* mesh data — name-only shells (broken PrefabInstance GUIDs)
+            // used to pass and skip Resources seating on WebGL.
+            bool hasGardenMesh = false;
+            foreach (MeshFilter filter in root.GetComponentsInChildren<MeshFilter>(true))
             {
-                if (child.name.StartsWith("Garden", System.StringComparison.OrdinalIgnoreCase))
-                    return true;
+                if (filter == null || filter.sharedMesh == null || filter.sharedMesh.vertexCount < 3)
+                    continue;
+                if (!filter.gameObject.name.StartsWith("Garden", System.StringComparison.OrdinalIgnoreCase))
+                    continue;
+                hasGardenMesh = true;
+                break;
             }
 
-            return false;
+            return hasGardenMesh;
         }
 
         private static Transform FindChildByName(Transform root, string objectName)
@@ -559,6 +566,28 @@ namespace PaiSho.Board
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// WebGL Resources path: disable leftover GamePlay Board PrefabInstance shells so
+        /// only the seated Resources Board.glb is visible (broken mesh GUIDs leave empty
+        /// Gate*/Garden* hierarchies that confuse FindSceneBoardModel).
+        /// </summary>
+        private static void HideOrphanSceneBoardMeshes(Transform boardTransform)
+        {
+            _ = boardTransform;
+            var all = Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            foreach (Transform candidate in all)
+            {
+                if (candidate == null)
+                    continue;
+                if (candidate.name is not ("Board" or "BoardModel"))
+                    continue;
+                if (!HasBoardMarkers(candidate.gameObject))
+                    continue;
+
+                candidate.gameObject.SetActive(false);
+            }
         }
 
         private struct HandTrayPose
@@ -792,16 +821,15 @@ namespace PaiSho.Board
 
             if (boardLayout.UseModelBoard && BoardVisualLoader.TryLoadModel(out GameObject boardModel, out string boardSource))
             {
-                // Same Board.glb + #37 F8 SoT on Editor and WebGL. GamePlay BoardModelSurface is
-                // empty, so both platforms seat via CreateModelBoardSurface; WebGL must not strip
-                // GridSpacingScale/SpacingFineTune (forcing 1/1 made live points diverge from the
-                // Editor Play seating Dalton signed off on).
+                // #37 F8 SoT. WebGL Resources seats Board.glb at authored scale 0.5 / yaw 0
+                // (CreateModelBoardSurface) to match GamePlay Board PrefabInstance; then the
+                // same FineAlign → remasure loop as Editor.
                 BoardAlignmentDefaults.ApplyTo(boardLayout);
-#if UNITY_WEBGL && !UNITY_EDITOR
-                // Board.glb is instanced at Y=90 so GardenLight* sit on BoardUtils SW+NE (white)
-                // wedges. Keep grid yaw 0 so light/dark coords land on those wedges — yaw -90
-                // aligned GateForeign/Home but swapped garden colors and sideways opening camera.
                 boardLayout.SetGridYawDegrees(0f);
+
+#if UNITY_WEBGL && !UNITY_EDITOR
+                // Hide orphan scene Board shells so Resources seating is the only visible mesh.
+                HideOrphanSceneBoardMeshes(boardTransform);
 #endif
 
                 var modelSurface = WoodTheme.CreateModelBoardSurface(
@@ -820,7 +848,6 @@ namespace PaiSho.Board
                 {
                     // Calibrate → FineAlign → remeasure → FineAlign again so CoordinateToWorld
                     // stays locked to gate inner faces after the final CellSpacing write.
-                    // Same loop on WebGL as Editor (HJ-26 FineAlign; EnsureMaterials still skipped).
                     WoodTheme.FineAlignBoardModel(placedModel.gameObject, boardLayout);
                     if (WoodTheme.TryMeasureNineteenByNineteenGridSpan(
                             placedModel.gameObject, boardLayout, out float span))

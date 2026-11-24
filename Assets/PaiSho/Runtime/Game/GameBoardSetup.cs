@@ -124,10 +124,12 @@ namespace PaiSho.Game
             bool bindPrebuilt = usePrebuiltLayout;
             bool preserveAuthored = preserveSceneAuthored;
 #if UNITY_WEBGL && !UNITY_EDITOR
-            // GamePlay.unity ships an empty BoardModelSurface. Always seat WebGL against the
-            // full Resources Board.glb (Gate* + Garden*) rather than binding a hole.
-            bindPrebuilt = false;
-            preserveAuthored = false;
+            // Prefer preserve/prebuilt when GamePlay Board PrefabInstance has real Garden*
+            // meshes (same path as Editor). If the instance is a name-only shell (broken
+            // mesh GUID), BoardManager falls back to Resources Board.glb seated at authored
+            // scale 0.5 / yaw 0 — not the old Y=90 + scale-to-GridSpan path.
+            bindPrebuilt = usePrebuiltLayout;
+            preserveAuthored = preserveSceneAuthored;
 #endif
             manager.SetUsePrebuiltLayout(bindPrebuilt);
             manager.SetPreserveSceneAuthored(preserveAuthored);

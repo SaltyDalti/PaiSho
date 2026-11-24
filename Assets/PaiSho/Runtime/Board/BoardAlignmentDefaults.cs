@@ -29,6 +29,23 @@ namespace PaiSho.Board
         /// <summary>Cells east of the home gate column to the player stand center.</summary>
         public const float PlayerStandEastCells = 2.5f;
 
+        /// <summary>
+        /// GamePlay.unity authored Board PrefabInstance local scale. Resources WebGL seating
+        /// must match this — CreateModelBoardSurface used to scale-to-GridSpan (~0.44) instead.
+        /// </summary>
+        public const float AuthoredBoardLocalScale = 0.5f;
+
+        /// <summary>
+        /// GamePlay.unity authored Board PrefabInstance yaw (degrees). Identity — not Y=90.
+        /// Garden light/dark is assigned by world quadrant after seat (0.1.29).
+        /// </summary>
+        public const float AuthoredBoardYawDegrees = 0f;
+
+        /// <summary>
+        /// Board.glb gate-inner N↔S distance / 16 at unit scale (~15.2727/16). Fallback only.
+        /// </summary>
+        public const float UnitGateInnerPitch = 0.9545455f;
+
         public static void ApplyTo(BoardLayout layout)
         {
             if (layout == null)
