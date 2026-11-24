@@ -52,6 +52,7 @@ namespace PaiSho.Pieces
                 return false;
 
             // White flowers may not sit in Red-only (dark, not mixed) gardens.
+            // Mixed only — not adjacent light/dark cells — stays dual-legal.
             if (IsWhiteFlower(type) && BoardUtils.IsRedOnlyGarden(coordinate))
                 return false;
 

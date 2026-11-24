@@ -68,12 +68,22 @@ namespace PaiSho.Board
             collider.size = new Vector3(size, height, size);
             collider.center = new Vector3(0f, height * 0.35f, 0f);
             collider.isTrigger = false;
+            // Occupied intersections are not placement targets; hide the pick volume with the marker.
+            collider.enabled = !IsOccupied();
+        }
+
+        private bool IsOccupied()
+        {
+            if (BoardManager.Instance == null)
+                return false;
+            return BoardManager.Instance.GetPieceAt(Coordinate) != null;
         }
 
         private void ApplyVisual(BoardLayout layout, BoardPointTunerSettings settings)
         {
             BoardPointTunerSettings active = settings ?? BoardPointRuntimeStyle.Gameplay;
-            bool show = active.showMarkers;
+            // Occupied points always hide markers (F8/dev included) so the tile covers the disc.
+            bool show = active.showMarkers && !IsOccupied();
             if (!show)
             {
                 if (visual != null)

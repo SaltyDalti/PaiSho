@@ -25,21 +25,10 @@ namespace PaiSho.Board
 
         private static readonly HashSet<int> LegalPoints = new();
         /// <summary>
-        /// White Gardens (IPSA), light-only interiors: SW + NE diagonals inside the
-        /// gate-to-gate diamond (|dr|+|dc| &lt;= 8). Mid-axis borders are also light via MixedGarden.
+        /// White Gardens (IPSA). Defaults live in <see cref="GardenRules"/> (Domain SoT);
+        /// this set is seeded from those defaults and can be replaced by tuner runtime paint.
         /// </summary>
-        private static readonly HashSet<int> LightGarden = new()
-        {
-            // SW light-only
-            46, 64, 65, 82, 83, 84, 100, 101, 102, 103, 118, 119, 120, 121, 122,
-            136, 137, 138, 139, 140, 141, 154, 155, 156, 157, 158, 159, 160,
-            // NE light-only
-            200, 201, 202, 203, 204, 205, 206, 219, 220, 221, 222, 223, 224,
-            238, 239, 240, 241, 242, 257, 258, 259, 260, 276, 277, 278, 295, 296, 314,
-            // Mixed borders (count as both light and dark)
-            47, 66, 85, 104, 123, 142, 161, 173, 174, 175, 176, 177, 178, 179,
-            181, 182, 183, 184, 185, 186, 187, 199, 218, 237, 256, 275, 294, 313
-        };
+        private static readonly HashSet<int> LightGarden = CreateDefaultLightGarden();
 
         private static readonly HashSet<int> Gates = new()
         {
@@ -53,36 +42,21 @@ namespace PaiSho.Board
         };
 
         /// <summary>
-        /// Red Gardens (IPSA), dark-only interiors: SE + NW diagonals, plus the same
-        /// mid-axis mixed borders (shared with LightGarden).
-        /// Outer diagonal neutral borders are listed in NeutralGardenBorder.
+        /// Red Gardens (IPSA). Defaults from <see cref="GardenRules"/>; runtime paint may replace.
         /// </summary>
-        private static readonly HashSet<int> DarkGarden = new()
-        {
-            // SE dark-only
-            48, 67, 68, 86, 87, 88, 105, 106, 107, 108, 124, 125, 126, 127, 128,
-            143, 144, 145, 146, 147, 148, 162, 163, 164, 165, 166, 167, 168,
-            // NW dark-only
-            192, 193, 194, 195, 196, 197, 198, 212, 213, 214, 215, 216, 217,
-            232, 233, 234, 235, 236, 252, 253, 254, 255, 272, 273, 274, 292, 293, 312,
-            // Mixed borders (count as both light and dark)
-            47, 66, 85, 104, 123, 142, 161, 173, 174, 175, 176, 177, 178, 179,
-            181, 182, 183, 184, 185, 186, 187, 199, 218, 237, 256, 275, 294, 313
-        };
+        private static readonly HashSet<int> DarkGarden = CreateDefaultDarkGarden();
 
-        /// <summary>
-        /// Single-cell diagonal borders between colored gardens and open neutral ground.
-        /// Both flower colors allowed here; adjacent cells remain light/dark interiors.
-        /// </summary>
-        private static readonly HashSet<int> NeutralGardenBorder = new()
+        private static HashSet<int> CreateDefaultLightGarden()
         {
-            // Light / white wedge — SW then NE (step +18 along each diagonal)
-            46, 64, 82, 100, 118, 136, 154,
-            206, 224, 242, 260, 278, 296, 314,
-            // Dark / red wedge — SE then NW (step +20 along each diagonal)
-            48, 68, 88, 108, 128, 148, 168,
-            192, 212, 232, 252, 272, 292, 312
-        };
+            GardenRules.GetDefaultGardens(out int[] light, out _);
+            return new HashSet<int>(light);
+        }
+
+        private static HashSet<int> CreateDefaultDarkGarden()
+        {
+            GardenRules.GetDefaultGardens(out _, out int[] dark);
+            return new HashSet<int>(dark);
+        }
 
         /// <summary>
         /// Eight neighbors in row/column space (3×3 square). Matches visual grid alignment.
@@ -196,14 +170,13 @@ namespace PaiSho.Board
             if (IsPort(coordinate))
                 return GardenType.Port;
 
+            // Runtime paint can diverge from Domain defaults; classify from active sets only.
+            // Do not promote light-only / dark-only outer-diagonal cells to Neutral (dual-legal):
+            // only true Mixed (in both sets) accepts both flower colors.
             bool light = IsInLightGarden(coordinate);
             bool dark = IsInDarkGarden(coordinate);
             if (light && dark)
                 return GardenType.MixedGarden;
-
-            if (NeutralGardenBorder.Contains(coordinate))
-                return GardenType.NeutralGarden;
-
             if (light)
                 return GardenType.LightGarden;
             if (dark)

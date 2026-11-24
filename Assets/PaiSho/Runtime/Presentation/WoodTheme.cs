@@ -1640,8 +1640,8 @@ namespace PaiSho
 
             // On WebGL, keep imported glTF/URP materials. EnsureMaterials → ToUrpMaterial
             // walks every Garden* renderer and has blown Safari's invoke_iii stack on the
-            // restored board. ApplyBoardModelMaterialTweaks still runs — Light↔Dark name
-            // swap + neutral tiling are required for readable gardens (HJ-26).
+            // restored board. ApplyBoardModelMaterialTweaks still runs for neutral tiling
+            // only — Light/Dark keep authored GardenLight*_Baked / GardenDark*_Baked.
 #if !UNITY_WEBGL || UNITY_EDITOR
             PieceMaterialUtility.EnsureMaterials(instance, sourceAssetPath);
 #endif
@@ -1717,7 +1717,7 @@ namespace PaiSho
         }
 
         /// <summary>
-        /// Resources / non-preserve path: always apply neutral tiling, lighten, and GardenLight/Dark swap.
+        /// Resources / non-preserve path: apply neutral tiling/lighten; Light/Dark stay authored.
         /// </summary>
         public static void EnsureBoardModelMaterialTweaks(BoardLayout layout, GameObject boardModelRoot)
         {
@@ -2545,10 +2545,9 @@ namespace PaiSho
             float neutralTiling = layout.NeutralGardenTextureTiling;
             float neutralLighten = layout.NeutralGardenLighten;
 
-            Material lightGardenMaterial = null;
-            Material darkGardenMaterial = null;
             var lightRenderers = new System.Collections.Generic.List<Renderer>();
             var darkRenderers = new System.Collections.Generic.List<Renderer>();
+            var gardenMaterials = new System.Collections.Generic.List<Material>();
 
             foreach (Renderer renderer in boardModel.GetComponentsInChildren<Renderer>(true))
             {
@@ -2558,14 +2557,16 @@ namespace PaiSho
                 if (IsGardenLightRenderer(renderer))
                 {
                     lightRenderers.Add(renderer);
-                    lightGardenMaterial ??= renderer.sharedMaterial;
+                    if (renderer.sharedMaterial != null)
+                        gardenMaterials.Add(renderer.sharedMaterial);
                     continue;
                 }
 
                 if (IsGardenDarkRenderer(renderer))
                 {
                     darkRenderers.Add(renderer);
-                    darkGardenMaterial ??= renderer.sharedMaterial;
+                    if (renderer.sharedMaterial != null)
+                        gardenMaterials.Add(renderer.sharedMaterial);
                     continue;
                 }
 
@@ -2578,41 +2579,66 @@ namespace PaiSho
                 AssignRendererMaterial(renderer, material);
             }
 
-            // Mesh names GardenLight*/GardenDark* are reversed vs visible white/red gardens on
-            // the Resources board (Dalton live 0.1.20–0.1.21). Assign by luminance so Create +
-            // Ensure stays idempotent — do not toggle. 0.1.20 mapped Light→lighter; flip once.
-            if (lightGardenMaterial != null && darkGardenMaterial != null)
-            {
-                Material lighter;
-                Material darker;
-                if (GardenMaterialLuminance(lightGardenMaterial) >= GardenMaterialLuminance(darkGardenMaterial))
-                {
-                    lighter = lightGardenMaterial;
-                    darker = darkGardenMaterial;
-                }
-                else
-                {
-                    lighter = darkGardenMaterial;
-                    darker = lightGardenMaterial;
-                }
+            // Bind by material name: GardenLight* → *Light* baked (white), GardenDark* → *Dark*
+            // (red). Idempotent if already correct; restores boards after prior luminance swaps.
+            foreach (Renderer renderer in lightRenderers)
+                TryAssignNamedGardenMaterial(renderer, gardenMaterials, wantLight: true);
 
-                foreach (Renderer renderer in lightRenderers)
-                    AssignRendererMaterial(renderer, CreateMaterialInstance(darker));
-
-                foreach (Renderer renderer in darkRenderers)
-                    AssignRendererMaterial(renderer, CreateMaterialInstance(lighter));
-            }
+            foreach (Renderer renderer in darkRenderers)
+                TryAssignNamedGardenMaterial(renderer, gardenMaterials, wantLight: false);
         }
 
-        private static float GardenMaterialLuminance(Material material)
+        private static void TryAssignNamedGardenMaterial(
+            Renderer renderer,
+            System.Collections.Generic.List<Material> pool,
+            bool wantLight)
         {
-            if (material == null)
-                return 0f;
+            if (renderer == null || pool == null || pool.Count == 0)
+                return;
 
-            Color color = material.HasProperty("_BaseColor")
-                ? material.GetColor("_BaseColor")
-                : material.color;
-            return color.r * 0.2126f + color.g * 0.7152f + color.b * 0.0722f;
+            string objectName = renderer.gameObject.name ?? string.Empty;
+            Material best = null;
+            int bestScore = -1;
+
+            foreach (Material candidate in pool)
+            {
+                if (candidate == null)
+                    continue;
+
+                string materialName = candidate.name ?? string.Empty;
+                bool nameIsLight = materialName.IndexOf("light", System.StringComparison.OrdinalIgnoreCase) >= 0;
+                bool nameIsDark = materialName.IndexOf("dark", System.StringComparison.OrdinalIgnoreCase) >= 0;
+                if (wantLight && !nameIsLight)
+                    continue;
+                if (!wantLight && !nameIsDark)
+                    continue;
+
+                int score = 1;
+                // Prefer GardenLight1_Baked for mesh GardenLight1, etc.
+                for (int digit = 1; digit <= 4; digit++)
+                {
+                    if (objectName.IndexOf(digit.ToString(), System.StringComparison.Ordinal) >= 0 &&
+                        materialName.IndexOf(digit.ToString(), System.StringComparison.Ordinal) >= 0)
+                        score += 2;
+                }
+
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    best = candidate;
+                }
+            }
+
+            if (best == null)
+                return;
+
+            // Already bound to the correct authored material (ignore " (Instance)" suffix).
+            string current = renderer.sharedMaterial != null ? renderer.sharedMaterial.name : string.Empty;
+            if (!string.IsNullOrEmpty(current) &&
+                current.StartsWith(best.name, System.StringComparison.OrdinalIgnoreCase))
+                return;
+
+            AssignRendererMaterial(renderer, CreateMaterialInstance(best));
         }
 
         private static Material CreateMaterialInstance(Material source)
