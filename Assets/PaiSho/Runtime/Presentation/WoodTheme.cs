@@ -2632,8 +2632,7 @@ namespace PaiSho
             float neutralTiling = layout.NeutralGardenTextureTiling;
             float neutralLighten = layout.NeutralGardenLighten;
 
-            var lightRenderers = new System.Collections.Generic.List<Renderer>();
-            var darkRenderers = new System.Collections.Generic.List<Renderer>();
+            var gardenRenderers = new System.Collections.Generic.List<Renderer>();
             var gardenMaterials = new System.Collections.Generic.List<Material>();
 
             foreach (Renderer renderer in boardModel.GetComponentsInChildren<Renderer>(true))
@@ -2641,17 +2640,9 @@ namespace PaiSho
                 if (renderer == null)
                     continue;
 
-                if (IsGardenLightRenderer(renderer))
+                if (IsGardenLightRenderer(renderer) || IsGardenDarkRenderer(renderer))
                 {
-                    lightRenderers.Add(renderer);
-                    if (renderer.sharedMaterial != null)
-                        gardenMaterials.Add(renderer.sharedMaterial);
-                    continue;
-                }
-
-                if (IsGardenDarkRenderer(renderer))
-                {
-                    darkRenderers.Add(renderer);
+                    gardenRenderers.Add(renderer);
                     if (renderer.sharedMaterial != null)
                         gardenMaterials.Add(renderer.sharedMaterial);
                     continue;
@@ -2666,72 +2657,51 @@ namespace PaiSho
                 AssignRendererMaterial(renderer, material);
             }
 
-            // Bind by material name: GardenLight* → *Light* baked (white), GardenDark* → *Dark*
-            // (red). Idempotent if already correct; restores boards after prior luminance swaps.
-            foreach (Renderer renderer in lightRenderers)
-                TryAssignNamedGardenMaterial(renderer, gardenMaterials, wantLight: true);
-
-            foreach (Renderer renderer in darkRenderers)
-                TryAssignNamedGardenMaterial(renderer, gardenMaterials, wantLight: false);
+            // Assign by world quadrant vs BoardUtils (light = SW+NE, dark = SE+NW), not mesh
+            // names — GardenLight*/GardenDark* labels disagree with wedges across Y=0 vs Y=90
+            // and caused the name/luminance thrash. Idempotent: same quadrant → same bake.
+            AssignGardenMaterialsByWorldQuadrant(boardModel, gardenRenderers, gardenMaterials);
         }
 
-        private static void TryAssignNamedGardenMaterial(
-            Renderer renderer,
-            System.Collections.Generic.List<Material> pool,
-            bool wantLight)
+        /// <summary>
+        /// After Board.glb Y=90, SW+NE wedges have world x*z &gt; 0 (BoardUtils light / white);
+        /// SE+NW have x*z &lt; 0 (dark / red). Bind lighter bake to light quadrants.
+        /// </summary>
+        private static void AssignGardenMaterialsByWorldQuadrant(
+            GameObject boardModel,
+            System.Collections.Generic.List<Renderer> gardenRenderers,
+            System.Collections.Generic.List<Material> gardenMaterials)
         {
-            if (renderer == null || pool == null || pool.Count == 0)
+            if (boardModel == null || gardenRenderers == null || gardenRenderers.Count == 0)
                 return;
 
-            string objectName = renderer.gameObject.name ?? string.Empty;
-            Material best = null;
-            int bestScore = -1;
+            Material lighter = PickGardenMaterialByLuminance(gardenMaterials, wantLighter: true);
+            Material darker = PickGardenMaterialByLuminance(gardenMaterials, wantLighter: false);
+            if (lighter == null || darker == null)
+                return;
 
-            foreach (Material candidate in pool)
+            Vector3 boardOrigin = boardModel.transform.position;
+            foreach (Renderer renderer in gardenRenderers)
             {
-                if (candidate == null)
+                if (renderer == null)
                     continue;
 
-                string materialName = candidate.name ?? string.Empty;
-                bool nameIsLight = materialName.IndexOf("light", System.StringComparison.OrdinalIgnoreCase) >= 0;
-                bool nameIsDark = materialName.IndexOf("dark", System.StringComparison.OrdinalIgnoreCase) >= 0;
-                if (wantLight && !nameIsLight)
-                    continue;
-                if (!wantLight && !nameIsDark)
+                Vector3 center = renderer.bounds.center;
+                float lx = center.x - boardOrigin.x;
+                float lz = center.z - boardOrigin.z;
+                bool lightQuadrant = (lx * lz) > 0f;
+                Material target = lightQuadrant ? lighter : darker;
+
+                string current = renderer.sharedMaterial != null ? renderer.sharedMaterial.name : string.Empty;
+                string targetName = StripMaterialInstanceSuffix(target.name ?? string.Empty);
+                if (!string.IsNullOrEmpty(current) &&
+                    !string.IsNullOrEmpty(targetName) &&
+                    (current.StartsWith(targetName, System.StringComparison.OrdinalIgnoreCase) ||
+                     StripMaterialInstanceSuffix(current).Equals(targetName, System.StringComparison.OrdinalIgnoreCase)))
                     continue;
 
-                int score = 1;
-                // Prefer GardenLight1_Baked for mesh GardenLight1, etc.
-                for (int digit = 1; digit <= 4; digit++)
-                {
-                    if (objectName.IndexOf(digit.ToString(), System.StringComparison.Ordinal) >= 0 &&
-                        materialName.IndexOf(digit.ToString(), System.StringComparison.Ordinal) >= 0)
-                        score += 2;
-                }
-
-                if (score > bestScore)
-                {
-                    bestScore = score;
-                    best = candidate;
-                }
+                AssignRendererMaterial(renderer, CreateMaterialInstance(target));
             }
-
-            // WebGL glTF imports sometimes strip Light/Dark from material names — fall back to
-            // luminance so GardenLight* still get the lighter (white) bake.
-            if (best == null)
-                best = PickGardenMaterialByLuminance(pool, wantLighter: wantLight);
-
-            if (best == null)
-                return;
-
-            // Already bound to the correct authored material (ignore " (Instance)" suffix).
-            string current = renderer.sharedMaterial != null ? renderer.sharedMaterial.name : string.Empty;
-            if (!string.IsNullOrEmpty(current) &&
-                (current.StartsWith(best.name, System.StringComparison.OrdinalIgnoreCase) ||
-                 best.name.StartsWith(StripMaterialInstanceSuffix(current), System.StringComparison.OrdinalIgnoreCase)))
-                return;
-
-            AssignRendererMaterial(renderer, CreateMaterialInstance(best));
         }
 
         private static string StripMaterialInstanceSuffix(string materialName)
@@ -2770,17 +2740,16 @@ namespace PaiSho
             if (material == null)
                 return 0f;
 
-            Color color = material.HasProperty("_BaseColor")
-                ? material.GetColor("_BaseColor")
-                : material.color;
-
-            // Texture-driven gardens: lean on name hints when present, else base color.
+            // Prefer stable name hints from Board.glb (*Light*_Baked / *Dark*_Baked).
             string name = material.name ?? string.Empty;
             if (name.IndexOf("light", System.StringComparison.OrdinalIgnoreCase) >= 0)
                 return 1f;
             if (name.IndexOf("dark", System.StringComparison.OrdinalIgnoreCase) >= 0)
                 return 0f;
 
+            Color color = material.HasProperty("_BaseColor")
+                ? material.GetColor("_BaseColor")
+                : material.color;
             return color.r * 0.2126f + color.g * 0.7152f + color.b * 0.0722f;
         }
 

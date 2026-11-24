@@ -29,9 +29,10 @@ namespace PaiSho.Game
         /// <summary>
         /// Extra world Y after Align seats mesh bottom on TileHeight — board rim sits above the
         /// garden surface; without this the crescent sinks into the rim (HJ-43).
-        /// 0.1.20 used 0.11 (still slight rim clip live); 0.1.21 nudges to 0.15.
+        /// 0.1.20=0.11, 0.1.21=0.15 (cleared rim clip then). After yaw-0 host seating (0.1.28),
+        /// 0.15 floats trays well above the table — drop toward a light rim kiss.
         /// </summary>
-        public const float WebGlStandRimLift = 0.15f;
+        public const float WebGlStandRimLift = 0.05f;
 
         /// <summary>
         /// HandTray* localPosition under PlayerStand* as authored in GamePlay / GameBoardSetup prefab.
